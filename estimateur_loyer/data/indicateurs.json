@@ -1,0 +1,7 @@
+{
+  "_commentaire": "Indicateurs officiels ONS. À mettre à jour chaque mois (publication ~3e mercredi).",
+  "cpi_12_mois": {"valeur": 0.031, "periode": "août 2026", "source": "ONS, Consumer price inflation, UK: August 2026"},
+  "cpih_12_mois": {"valeur": 0.033, "periode": "août 2026", "source": "ONS, Consumer price inflation, UK: August 2026"},
+  "loyers_lambeth_12_mois": {"valeur": 0.042, "periode": "juillet 2026", "moyenne_pcm": 2519, "source": "ONS, Price Index of Private Rents, Lambeth"},
+  "loyers_londres_12_mois": {"valeur": 0.030, "periode": "juillet 2026", "source": "ONS, Price Index of Private Rents, London"}
+}
