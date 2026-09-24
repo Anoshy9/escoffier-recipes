@@ -1,4 +1,4 @@
-<title>Loyer Barrington Road</title>
+<title>Barrington Road Rent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -121,54 +121,54 @@ td input[type=text] { font: 14px var(--body); color: var(--ink); padding: 5px 7p
 <div class="wrap">
   <header>
     <div class="eyebrow"><span class="roundel" aria-hidden="true"></span>Brixton · SW9 7 · Lambeth</div>
-    <h1 style="margin-top:12px">Quel loyer pour l'appartement de Barrington Road&nbsp;?</h1>
-    <p class="lede">Le calculateur part des annonces comparables du quartier et de l'inflation sur 12 mois. Il en déduit un nouveau loyer mensuel. Modifiez le loyer actuel, les hypothèses ou les annonces : tout se recalcule.</p>
+    <h1 style="margin-top:12px">What rent for the Barrington Road flat?</h1>
+    <p class="lede">This calculator starts from comparable local listings and 12-month inflation, and works out a new monthly rent. Change the current rent, the assumptions or the listings and everything recalculates.</p>
   </header>
 
   <div class="grid">
     <form class="panel" id="form" autocomplete="off">
       <div class="field">
-        <label for="actuel">Loyer actuel</label>
-        <div class="money"><span>£</span><input type="number" id="actuel" value="1770" min="0" step="5" inputmode="numeric"><span>/ mois</span></div>
+        <label for="actuel">Current rent</label>
+        <div class="money"><span>£</span><input type="number" id="actuel" value="1770" min="0" step="5" inputmode="numeric"><span>/ month</span></div>
       </div>
       <div class="field">
-        <span class="lbl" id="type-lbl">Type de bien</span>
+        <span class="lbl" id="type-lbl">Property type</span>
         <div class="seg" role="group" aria-labelledby="type-lbl">
-          <button type="button" id="t-1ch" data-type="1ch" aria-pressed="true">1 chambre</button>
+          <button type="button" id="t-1ch" data-type="1ch" aria-pressed="true">1 bedroom</button>
           <button type="button" id="t-studio" data-type="studio" aria-pressed="false">Studio</button>
         </div>
       </div>
       <hr>
       <div class="pair">
         <div class="field">
-          <label for="cpi">Inflation CPI</label>
+          <label for="cpi">CPI inflation</label>
           <input type="number" id="cpi" value="3.1" step="0.1">
-          <span class="hint">% sur 12 mois, août 2026</span>
+          <span class="hint">% over 12 months, Aug 2026</span>
         </div>
         <div class="field">
-          <label for="lambeth">Loyers Lambeth</label>
+          <label for="lambeth">Lambeth rents</label>
           <input type="number" id="lambeth" value="4.2" step="0.1">
-          <span class="hint">% sur 12 mois, juil. 2026</span>
+          <span class="hint">% over 12 months, Jul 2026</span>
         </div>
       </div>
       <div class="range">
-        <div class="top"><label for="decote">Décote de négociation</label><output id="decote-o" for="decote"></output></div>
+        <div class="top"><label for="decote">Negotiation discount</label><output id="decote-o" for="decote"></output></div>
         <input type="range" id="decote" min="0" max="8" step="0.5" value="2">
-        <span class="hint">Écart moyen entre loyer affiché et loyer signé.</span>
+        <span class="hint">Typical gap between asking rent and agreed rent.</span>
       </div>
       <div class="range">
-        <div class="top"><label for="marge">Marge de fidélisation</label><output id="marge-o" for="marge"></output></div>
+        <div class="top"><label for="marge">Tenant retention margin</label><output id="marge-o" for="marge"></output></div>
         <input type="range" id="marge" min="0" max="10" step="0.5" value="3">
-        <span class="hint">Remise sous le marché pour garder un bon locataire.</span>
+        <span class="hint">Discount below market to keep a good tenant.</span>
       </div>
-      <button type="button" class="btn" id="reset">Revenir aux valeurs de départ</button>
+      <button type="button" class="btn" id="reset">Reset to starting values</button>
     </form>
 
     <div class="result">
       <section class="hero" aria-live="polite">
-        <div class="lbl">Loyer recommandé</div>
+        <div class="lbl">Recommended rent</div>
         <div class="hero-top">
-          <div class="big num" id="reco">£1 825<small>/ mois</small></div>
+          <div class="big num" id="reco">£1,825<small>/ month</small></div>
           <div class="delta num" id="delta"></div>
         </div>
         <div id="status"></div>
@@ -176,24 +176,24 @@ td input[type=text] { font: 14px var(--body); color: var(--ink); padding: 5px 7p
       </section>
 
       <section class="panel">
-        <h2>Scénarios</h2>
+        <h2>Scenarios</h2>
         <div class="scen" id="scen"></div>
       </section>
 
       <section class="panel">
         <div class="section-head">
-          <h2>Où se situe le loyer dans le marché</h2>
+          <h2>Where the rent sits in the market</h2>
           <div class="lbl num" id="market-txt"></div>
         </div>
         <div class="chart-wrap" id="chart-wrap">
-          <svg id="chart" width="100%" height="150" role="img" aria-label="Loyers des annonces comparables, loyer actuel et loyer recommandé"></svg>
+          <svg id="chart" width="100%" height="150" role="img" aria-label="Rents of comparable listings, current rent and recommended rent"></svg>
           <div class="tip" id="tip" hidden></div>
         </div>
         <div class="legend">
-          <span><i class="sw" style="background:var(--ink-2)"></i>Annonce (plus grosse = plus proche)</span>
-          <span><i class="sw" style="background:var(--band);border-radius:2px"></i>Fourchette probable du marché</span>
-          <span><i class="sw" style="background:transparent;border:2px solid var(--ink)"></i>Loyer actuel</span>
-          <span><i class="sw" style="background:var(--accent)"></i>Loyer recommandé</span>
+          <span><i class="sw" style="background:var(--ink-2)"></i>Listing (bigger = closer)</span>
+          <span><i class="sw" style="background:var(--band);border-radius:2px"></i>Likely market range</span>
+          <span><i class="sw" style="background:transparent;border:2px solid var(--ink)"></i>Current rent</span>
+          <span><i class="sw" style="background:var(--accent)"></i>Recommended rent</span>
         </div>
       </section>
     </div>
@@ -202,24 +202,24 @@ td input[type=text] { font: 14px var(--body); color: var(--ink); padding: 5px 7p
   <section class="panel">
     <div class="section-head">
       <div>
-        <h2>Annonces comparables</h2>
-        <p class="hint" style="margin:4px 0 0">Loyers demandés relevés en septembre 2026. Décochez une annonce pour l'exclure. Distances approximatives à vol d'oiseau depuis Barrington Road.</p>
+        <h2>Comparable listings</h2>
+        <p class="hint" style="margin:4px 0 0">Asking rents collected in September 2026. Untick a listing to exclude it. Distances are approximate, as the crow flies from Barrington Road.</p>
       </div>
-      <button type="button" class="btn" id="add">Ajouter une annonce</button>
+      <button type="button" class="btn" id="add">Add a listing</button>
     </div>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th></th><th>Adresse</th><th>Type</th><th class="r">Loyer £/mois</th><th class="r">Distance (miles)</th><th class="r">Poids</th><th>Source</th><th></th></tr></thead>
+        <thead><tr><th></th><th>Address</th><th>Type</th><th class="r">Rent £/month</th><th class="r">Distance (miles)</th><th class="r">Weight</th><th>Source</th><th></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
   </section>
 
   <p class="foot">
-    Méthode : médiane des loyers affichés pondérée par la proximité (poids = 1 / (0,25 + distance)), moins la décote. Le loyer recommandé vise ce loyer de marché moins la marge de fidélisation. Il ne descend jamais sous le loyer actuel indexé sur le CPI et ne dépasse jamais le loyer de marché, plafond qu'appliquerait le First-tier Tribunal en cas de contestation. En Angleterre, une seule hausse par an est possible, notifiée par formulaire « section 13 » avec deux mois de préavis.
-    Sources : <a href="https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/consumerpriceinflation/august2026">ONS, inflation août 2026</a> ·
-    <a href="https://www.ons.gov.uk/visualisations/housingpriceslocal/E09000022/">ONS, loyers à Lambeth</a> ·
-    annonces Keating Estates, Zoopla, PrimeLocation, OnTheMarket, Rightmove, FJ Lord. Aide à la décision, pas une expertise.
+    Method: median of asking rents weighted by proximity (weight = 1 / (0.25 + distance)), minus the negotiation discount. The recommended rent targets that market rent minus the retention margin. It never falls below the current rent indexed to CPI and never exceeds the market rent, which is the ceiling a First-tier Tribunal would apply if the tenant challenged it. In England, rent can go up only once a year, using a Section 13 notice with two months' notice.
+    Sources: <a href="https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/consumerpriceinflation/august2026">ONS, inflation August 2026</a> ·
+    <a href="https://www.ons.gov.uk/visualisations/housingpriceslocal/E09000022/">ONS, Lambeth rents</a> ·
+    listings from Keating Estates, Zoopla, PrimeLocation, OnTheMarket, Rightmove, FJ Lord. A decision aid, not a professional valuation.
   </p>
 </div>
 
@@ -230,7 +230,7 @@ const DEFAULT_COMPS = [
   ["Coldharbour Lane, SW9", "1ch", 1850, 0.2, "Zoopla"],
   ["Station Avenue, SW9", "1ch", 1500, 0.3, "FJ Lord"],
   ["Loughborough Park, SW9", "1ch", 1750, 0.5, "OnTheMarket"],
-  ["Brixton, SW9 (meublé)", "1ch", 1700, 0.5, "Zoopla"],
+  ["Brixton, SW9 (furnished)", "1ch", 1700, 0.5, "Zoopla"],
   ["Turner Close, SW9", "1ch", 1700, 0.6, "Zoopla"],
   ["Horsford Road, SW2", "1ch", 1850, 0.9, "Rightmove"],
   ["Charles Haller Street, SW2", "1ch", 1650, 1.0, "Rightmove"],
@@ -238,12 +238,12 @@ const DEFAULT_COMPS = [
   ["Angell Road, SW9", "studio", 1350, 0.3, "Zoopla / PrimeLocation"],
   ["Electric Avenue, SW9", "studio", 1375, 0.4, "Zoopla / PrimeLocation"],
   ["Brixton Road, SW9", "studio", 1560, 0.5, "Rightmove"],
-  ["Brixton Road, SW9 (rénové)", "studio", 1200, 0.5, "Zoopla / PrimeLocation"],
+  ["Brixton Road, SW9 (refurbished)", "studio", 1200, 0.5, "Zoopla / PrimeLocation"],
   ["Southey Road, SW9", "studio", 1350, 1.3, "Zoopla / PrimeLocation"],
 ].map(([adresse, type, loyer, dist, source]) => ({ adresse, type, loyer, dist, source, on: true }));
 
 const DEFAULTS = { actuel: 1770, type: "1ch", cpi: 3.1, lambeth: 4.2, decote: 2, marge: 3 };
-const STORE = "loyer-barrington-v1";
+const STORE = "rent-barrington-en-v1";
 
 let comps = DEFAULT_COMPS.map(c => ({ ...c }));
 let state = { ...DEFAULTS };
@@ -254,8 +254,8 @@ try {
 } catch (e) {}
 
 const $ = id => document.getElementById(id);
-const gbp = x => "£" + Math.round(x).toLocaleString("fr-FR").replace(/ | /g, " ");
-const pct = x => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(1).replace(".", ",") + " %";
+const gbp = x => "£" + Math.round(x).toLocaleString("en-GB");
+const pct = x => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(1) + "%";
 const poids = d => 1 / (0.25 + d);
 const arrondir = (x, pas = 5, plafond = Infinity) => {
   const r = Math.round(x / pas) * pas;
@@ -263,7 +263,7 @@ const arrondir = (x, pas = 5, plafond = Infinity) => {
 };
 
 function quantilePondere(vals, ws, q) {
-  // valeurs identiques fusionnées : le résultat ne dépend pas de l'ordre des annonces
+  // merge identical rents so the result does not depend on listing order
   const m = new Map();
   vals.forEach((v, i) => m.set(v, (m.get(v) || 0) + ws[i]));
   const p = [...m.entries()].sort((a, b) => a[0] - b[0]);
@@ -301,8 +301,8 @@ function calcul() {
 }
 
 function render() {
-  $("decote-o").textContent = state.decote.toString().replace(".", ",") + " %";
-  $("marge-o").textContent = state.marge.toString().replace(".", ",") + " %";
+  $("decote-o").textContent = state.decote + "%";
+  $("marge-o").textContent = state.marge + "%";
   for (const b of document.querySelectorAll(".seg button")) b.setAttribute("aria-pressed", b.dataset.type === state.type);
 
   const r = calcul();
@@ -311,45 +311,45 @@ function render() {
     $("reco").innerHTML = "—";
     $("delta").textContent = "";
     $("status").innerHTML = "";
-    $("why").textContent = !r ? "Aucune annonce active pour ce type de bien. Cochez ou ajoutez des annonces ci-dessous." : "Saisissez le loyer actuel pour obtenir une recommandation.";
+    $("why").textContent = !r ? "No active listings for this property type. Tick or add listings below." : "Enter the current rent to get a recommendation.";
     $("scen").innerHTML = ""; $("chart").innerHTML = ""; $("market-txt").textContent = "";
     return;
   }
   const a = state.actuel, h = r.reco - a;
-  $("reco").innerHTML = gbp(r.reco) + "<small>/ mois</small>";
+  $("reco").innerHTML = gbp(r.reco) + "<small>/ month</small>";
   $("delta").innerHTML = h > 0
-    ? `<span class="pos">+${gbp(h)} / mois · ${pct(h / a)}</span><br><span style="color:var(--muted);font-size:14px">soit +${gbp(h * 12)} par an</span>`
-    : `<span style="color:var(--muted)">Pas de hausse</span>`;
+    ? `<span class="pos">+${gbp(h)} / month · ${pct(h / a)}</span><br><span style="color:var(--muted);font-size:14px">or +${gbp(h * 12)} a year</span>`
+    : `<span style="color:var(--muted)">No increase</span>`;
 
   const ecart = (a - r.marche) / r.marche;
   $("status").innerHTML = a >= r.marche
-    ? `<span class="pill warn">▲ Loyer actuel au-dessus du marché (${pct(ecart)})</span>`
-    : `<span class="pill good">● Loyer actuel sous le marché (${pct(ecart)})</span>`;
+    ? `<span class="pill warn">▲ Current rent above market (${pct(ecart)})</span>`
+    : `<span class="pill good">● Current rent below market (${pct(ecart)})</span>`;
 
   const why = {
-    "inflation": `Le loyer actuel est déjà proche du marché (${gbp(r.marche)}). Viser le marché moins ${String(state.marge).replace(".", ",")} % donnerait moins que l'indexation sur l'inflation. La hausse suit donc l'inflation : ${pct(state.cpi / 100)}.`,
-    "marche": `Le loyer actuel est nettement sous le marché (${gbp(r.marche)}). La recommandation vise le marché moins ${String(state.marge).replace(".", ",")} % de marge de fidélisation. Pour une hausse importante, pensez à l'étaler sur deux ans.`,
-    "plafond": `L'indexation sur l'inflation dépasserait le loyer de marché. La recommandation s'arrête au marché (${gbp(r.marche)}), que le tribunal pourrait appliquer en cas de contestation.`,
-    "au-dessus": `Le loyer actuel dépasse déjà le loyer de marché estimé (${gbp(r.marche)}). Une hausse risquerait d'être annulée si le locataire la conteste devant le tribunal.`,
+    "inflation": `The current rent is already close to market (${gbp(r.marche)}). Targeting market minus ${state.marge}% would give less than indexing to inflation, so the increase follows inflation: ${pct(state.cpi / 100)}.`,
+    "marche": `The current rent is well below market (${gbp(r.marche)}). The recommendation targets market minus a ${state.marge}% retention margin. For a large increase, consider spreading it over two years.`,
+    "plafond": `Indexing to inflation would go above the market rent. The recommendation stops at market (${gbp(r.marche)}), which a tribunal could apply if the tenant challenged it.`,
+    "au-dessus": `The current rent is already above the estimated market rent (${gbp(r.marche)}). An increase could be overturned if the tenant challenges it at tribunal.`,
   }[r.regle];
   $("why").textContent = why;
 
   const scen = [
-    ["Indexation sur l'inflation (CPI)", r.inflation, r.regle === "inflation"],
-    ["Tendance des loyers à Lambeth", r.locale, false],
-    ["Alignement complet sur le marché", r.marche, r.regle === "plafond"],
-    ["Recommandation", r.reco, r.regle === "marche" || r.regle === "au-dessus"],
+    ["Indexed to inflation (CPI)", r.inflation, r.regle === "inflation"],
+    ["Lambeth rent trend", r.locale, false],
+    ["Full market rent", r.marche, r.regle === "plafond"],
+    ["Recommendation", r.reco, r.regle === "marche" || r.regle === "au-dessus"],
   ];
   const maxS = Math.max(...scen.map(s => s[1]), a) * 1.02, minS = Math.min(...scen.map(s => s[1]), a) * 0.9;
   $("scen").innerHTML = scen.map(([nom, v, pick]) => {
     const d = v - a;
-    return `<div class="scen-row${pick || nom === "Recommandation" ? " pick" : ""}">
+    return `<div class="scen-row${pick || nom === "Recommendation" ? " pick" : ""}">
       <span class="name">${nom}</span>
       <span class="bar"><i style="width:${((v - minS) / (maxS - minS) * 100).toFixed(1)}%"></i></span>
       <span class="v">${gbp(v)} <span style="color:var(--muted)">${pct(d / a)}</span></span></div>`;
   }).join("");
 
-  $("market-txt").textContent = `Marché ${gbp(r.marche)} · fourchette ${gbp(r.bas)} – ${gbp(r.haut)}`;
+  $("market-txt").textContent = `Market ${gbp(r.marche)} · range ${gbp(r.bas)} – ${gbp(r.haut)}`;
   drawChart(r);
   save();
 }
@@ -368,9 +368,9 @@ function drawChart(r) {
   }
   s += `<rect x="${x(r.bas)}" y="24" width="${Math.max(2, x(r.haut) - x(r.bas))}" height="${axisY - 30}" fill="var(--band)" rx="4"/>`;
   s += `<line x1="${x(r.marche)}" x2="${x(r.marche)}" y1="20" y2="${axisY - 4}" stroke="var(--ink-2)" stroke-width="2" stroke-dasharray="4 3"/>`;
-  s += `<text x="${x(r.marche)}" y="14" text-anchor="middle" style="fill:var(--ink-2)">marché</text>`;
+  s += `<text x="${x(r.marche)}" y="14" text-anchor="middle" style="fill:var(--ink-2)">market</text>`;
   s += `<line x1="${padL}" x2="${W - padR}" y1="${axisY}" y2="${axisY}" stroke="var(--line)" stroke-width="1"/>`;
-  // annonces : jitter vertical déterministe pour éviter les superpositions
+  // listings: deterministic vertical offset to avoid overlaps
   const sorted = [...r.retenus].sort((a, b) => a.loyer - b.loyer);
   const lanes = [];
   sorted.forEach((c, i) => {
@@ -383,7 +383,7 @@ function drawChart(r) {
     s += `<circle class="dot" data-i="${comps.indexOf(c)}" cx="${cx}" cy="${cy}" r="${rad}" fill="var(--ink-2)" stroke="var(--surface)" stroke-width="2"/>`;
     s += `<circle class="hit" data-i="${comps.indexOf(c)}" cx="${cx}" cy="${cy}" r="${rad + 7}" fill="transparent"/>`;
   });
-  // actuel & recommandé sur l'axe
+  // current and recommended rent on the axis
   s += `<circle cx="${x(state.actuel)}" cy="${axisY}" r="7" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/>`;
   s += `<circle cx="${x(r.reco)}" cy="${axisY}" r="7" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
@@ -396,7 +396,7 @@ $("chart").addEventListener("pointermove", e => {
   if (!t) { tip.hidden = true; return; }
   const c = comps[+t.dataset.i];
   const box = $("chart-wrap").getBoundingClientRect(), cb = t.getBoundingClientRect();
-  tip.textContent = `${c.adresse} · ${gbp(c.loyer)} · ${String(c.dist).replace(".", ",")} mi`;
+  tip.textContent = `${c.adresse} · ${gbp(c.loyer)} · ${c.dist} mi`;
   tip.style.left = (cb.left + cb.width / 2 - box.left) + "px";
   tip.style.top = (cb.top - box.top) + "px";
   tip.hidden = false;
@@ -410,14 +410,14 @@ function renderRows() {
   const rows = comps.map((c, i) => ({ c, i })).filter(({ c }) => c.type === state.type);
   $("rows").innerHTML = rows.map(({ c, i }) => `
     <tr class="${c.on ? "" : "off"}">
-      <td><input type="checkbox" id="on-${i}" data-i="${i}" data-k="on" ${c.on ? "checked" : ""} aria-label="Inclure ${esc(c.adresse)}"></td>
-      <td><input type="text" id="ad-${i}" data-i="${i}" data-k="adresse" value="${esc(c.adresse)}" aria-label="Adresse"></td>
-      <td>${c.type === "1ch" ? "1 chambre" : "Studio"}</td>
-      <td class="r"><input type="number" id="lo-${i}" data-i="${i}" data-k="loyer" value="${c.loyer}" step="25" min="0" aria-label="Loyer"></td>
+      <td><input type="checkbox" id="on-${i}" data-i="${i}" data-k="on" ${c.on ? "checked" : ""} aria-label="Include ${esc(c.adresse)}"></td>
+      <td><input type="text" id="ad-${i}" data-i="${i}" data-k="adresse" value="${esc(c.adresse)}" aria-label="Address"></td>
+      <td>${c.type === "1ch" ? "1 bedroom" : "Studio"}</td>
+      <td class="r"><input type="number" id="lo-${i}" data-i="${i}" data-k="loyer" value="${c.loyer}" step="25" min="0" aria-label="Rent"></td>
       <td class="r"><input type="number" id="di-${i}" data-i="${i}" data-k="dist" value="${c.dist}" step="0.1" min="0" aria-label="Distance"></td>
-      <td class="r num">${poids(c.dist).toFixed(2).replace(".", ",")}</td>
+      <td class="r num">${poids(c.dist).toFixed(2)}</td>
       <td style="color:var(--ink-2);white-space:nowrap">${esc(c.source)}</td>
-      <td><button type="button" class="x" data-del="${i}" aria-label="Supprimer ${esc(c.adresse)}">×</button></td>
+      <td><button type="button" class="x" data-del="${i}" aria-label="Delete ${esc(c.adresse)}">×</button></td>
     </tr>`).join("");
   if (active && $(active)) { const el = $(active); el.focus(); if (el.type === "text") { const n = el.value.length; el.setSelectionRange(n, n); } }
 }
@@ -433,7 +433,7 @@ $("rows").addEventListener("click", e => {
   if (d) { comps.splice(+d.dataset.del, 1); render(); }
 });
 $("add").addEventListener("click", () => {
-  comps.push({ adresse: "Nouvelle annonce", type: state.type, loyer: 1800, dist: 0.5, source: "Saisie manuelle", on: true });
+  comps.push({ adresse: "New listing", type: state.type, loyer: 1800, dist: 0.5, source: "Added manually", on: true });
   render();
   const i = comps.length - 1; const el = $("ad-" + i); if (el) { el.focus(); el.select(); }
 });
