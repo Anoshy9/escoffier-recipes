@@ -1,0 +1,455 @@
+<title>Loyer Barrington Road</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #f3f5f6;
+  --surface: #ffffff;
+  --ink: #16202b;
+  --ink-2: #4a5866;
+  --muted: #7d8a96;
+  --line: #d9dfe4;
+  --line-soft: #e8ecef;
+  --accent: #0079ad;       /* Victoria line, darkened for text contrast */
+  --accent-soft: #d6eef8;
+  --band: #e3eef4;
+  --good: #1f7a4d;
+  --warn: #9a5b00;
+  --warn-soft: #fbf0dc;
+  --good-soft: #def3e7;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f151b; --surface: #17202a; --ink: #e7edf2; --ink-2: #a9b6c2; --muted: #7c8a97;
+    --line: #2a3643; --line-soft: #212c37; --accent: #3db7ec; --accent-soft: #11354a;
+    --band: #1c3345; --good: #5fd39a; --warn: #f0b252; --warn-soft: #3a2c14; --good-soft: #15352a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f151b; --surface: #17202a; --ink: #e7edf2; --ink-2: #a9b6c2; --muted: #7c8a97;
+  --line: #2a3643; --line-soft: #212c37; --accent: #3db7ec; --accent-soft: #11354a;
+  --band: #1c3345; --good: #5fd39a; --warn: #f0b252; --warn-soft: #3a2c14; --good-soft: #15352a;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body); padding-inline: 16px; padding-block: 28px 56px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(26px, 4vw, 38px); line-height: 1.1; font-weight: 700; }
+h2 { font-size: 19px; font-weight: 700; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); display: flex; gap: 10px; align-items: center; }
+.roundel { width: 18px; height: 18px; border-radius: 50%; border: 4px solid var(--accent); position: relative; flex: none; }
+.roundel::after { content: ""; position: absolute; left: -7px; right: -7px; top: 50%; height: 4px; margin-top: -2px; background: var(--accent); }
+.lede { color: var(--ink-2); max-width: 64ch; margin: 8px 0 0; }
+.num, input[type=number], td.r { font-variant-numeric: tabular-nums; }
+
+.grid { display: grid; grid-template-columns: 330px 1fr; gap: 24px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 18px; }
+.field { display: grid; gap: 6px; }
+.field label, .lbl { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.hint { font-size: 12px; color: var(--muted); }
+.money { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.money span { padding: 0 10px; color: var(--muted); font-family: var(--mono); }
+.money input { border: 0; background: transparent; flex: 1; min-width: 0; }
+input[type=number] { font: 500 16px var(--mono); color: var(--ink); padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); width: 100%; }
+.money input[type=number] { font-size: 22px; padding-left: 0; }
+input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: 600 13px var(--body); padding: 9px; border: 0; background: var(--bg); color: var(--ink-2); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.range { display: grid; gap: 4px; }
+.range .top { display: flex; justify-content: space-between; font-size: 13px; }
+.range output { font-family: var(--mono); color: var(--ink); }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+hr { border: 0; border-top: 1px solid var(--line-soft); margin: 0; }
+
+.result { display: grid; gap: 20px; }
+.hero { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px; display: grid; gap: 16px; }
+.hero-top { display: flex; flex-wrap: wrap; gap: 24px 40px; align-items: flex-end; }
+.big { font: 700 clamp(40px, 7vw, 60px)/1 var(--display); letter-spacing: -0.02em; }
+.big small { font: 500 16px var(--body); color: var(--muted); letter-spacing: 0; margin-left: 4px; }
+.delta { font: 500 18px var(--mono); }
+.delta .pos { color: var(--good); }
+.pill { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 999px; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.why { color: var(--ink-2); margin: 0; max-width: 70ch; }
+
+.scen { display: grid; gap: 10px; }
+.scen-row { display: grid; grid-template-columns: 210px 1fr 150px; gap: 12px; align-items: center; font-size: 14px; }
+.scen-row .bar { height: 10px; background: var(--line-soft); border-radius: 5px; position: relative; overflow: hidden; }
+.scen-row .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink-2); border-radius: 5px; }
+.scen-row.pick .bar i { background: var(--accent); }
+.scen-row.pick .name { font-weight: 600; }
+.scen-row .v { text-align: right; font-family: var(--mono); font-size: 13px; }
+@media (max-width: 560px) { .scen-row { grid-template-columns: 1fr auto; } .scen-row .bar { grid-column: 1 / -1; order: 3; } }
+
+.chart-wrap { position: relative; }
+svg text { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; padding: 6px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font: 500 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 8px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }
+td.r, th.r { text-align: right; }
+tr.off td { opacity: 0.45; }
+td input[type=number] { width: 90px; font-size: 14px; padding: 5px 7px; text-align: right; }
+td input[type=text] { font: 14px var(--body); color: var(--ink); padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); width: 100%; min-width: 160px; }
+.btn { font: 600 13px var(--body); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px 6px; }
+.x:hover { color: var(--ink); }
+.foot { font-size: 12.5px; color: var(--muted); max-width: 80ch; }
+.foot a { color: var(--accent); }
+.section-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+@media (prefers-reduced-motion: no-preference) { .scen-row .bar i { transition: width .25s ease; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow"><span class="roundel" aria-hidden="true"></span>Brixton · SW9 7 · Lambeth</div>
+    <h1 style="margin-top:12px">Quel loyer pour l'appartement de Barrington Road&nbsp;?</h1>
+    <p class="lede">Le calculateur part des annonces comparables du quartier et de l'inflation sur 12 mois. Il en déduit un nouveau loyer mensuel. Modifiez le loyer actuel, les hypothèses ou les annonces : tout se recalcule.</p>
+  </header>
+
+  <div class="grid">
+    <form class="panel" id="form" autocomplete="off">
+      <div class="field">
+        <label for="actuel">Loyer actuel</label>
+        <div class="money"><span>£</span><input type="number" id="actuel" value="1770" min="0" step="5" inputmode="numeric"><span>/ mois</span></div>
+      </div>
+      <div class="field">
+        <span class="lbl" id="type-lbl">Type de bien</span>
+        <div class="seg" role="group" aria-labelledby="type-lbl">
+          <button type="button" id="t-1ch" data-type="1ch" aria-pressed="true">1 chambre</button>
+          <button type="button" id="t-studio" data-type="studio" aria-pressed="false">Studio</button>
+        </div>
+      </div>
+      <hr>
+      <div class="pair">
+        <div class="field">
+          <label for="cpi">Inflation CPI</label>
+          <input type="number" id="cpi" value="3.1" step="0.1">
+          <span class="hint">% sur 12 mois, août 2026</span>
+        </div>
+        <div class="field">
+          <label for="lambeth">Loyers Lambeth</label>
+          <input type="number" id="lambeth" value="4.2" step="0.1">
+          <span class="hint">% sur 12 mois, juil. 2026</span>
+        </div>
+      </div>
+      <div class="range">
+        <div class="top"><label for="decote">Décote de négociation</label><output id="decote-o" for="decote"></output></div>
+        <input type="range" id="decote" min="0" max="8" step="0.5" value="2">
+        <span class="hint">Écart moyen entre loyer affiché et loyer signé.</span>
+      </div>
+      <div class="range">
+        <div class="top"><label for="marge">Marge de fidélisation</label><output id="marge-o" for="marge"></output></div>
+        <input type="range" id="marge" min="0" max="10" step="0.5" value="3">
+        <span class="hint">Remise sous le marché pour garder un bon locataire.</span>
+      </div>
+      <button type="button" class="btn" id="reset">Revenir aux valeurs de départ</button>
+    </form>
+
+    <div class="result">
+      <section class="hero" aria-live="polite">
+        <div class="lbl">Loyer recommandé</div>
+        <div class="hero-top">
+          <div class="big num" id="reco">£1 825<small>/ mois</small></div>
+          <div class="delta num" id="delta"></div>
+        </div>
+        <div id="status"></div>
+        <p class="why" id="why"></p>
+      </section>
+
+      <section class="panel">
+        <h2>Scénarios</h2>
+        <div class="scen" id="scen"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <h2>Où se situe le loyer dans le marché</h2>
+          <div class="lbl num" id="market-txt"></div>
+        </div>
+        <div class="chart-wrap" id="chart-wrap">
+          <svg id="chart" width="100%" height="150" role="img" aria-label="Loyers des annonces comparables, loyer actuel et loyer recommandé"></svg>
+          <div class="tip" id="tip" hidden></div>
+        </div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--ink-2)"></i>Annonce (plus grosse = plus proche)</span>
+          <span><i class="sw" style="background:var(--band);border-radius:2px"></i>Fourchette probable du marché</span>
+          <span><i class="sw" style="background:transparent;border:2px solid var(--ink)"></i>Loyer actuel</span>
+          <span><i class="sw" style="background:var(--accent)"></i>Loyer recommandé</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="section-head">
+      <div>
+        <h2>Annonces comparables</h2>
+        <p class="hint" style="margin:4px 0 0">Loyers demandés relevés en septembre 2026. Décochez une annonce pour l'exclure. Distances approximatives à vol d'oiseau depuis Barrington Road.</p>
+      </div>
+      <button type="button" class="btn" id="add">Ajouter une annonce</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th></th><th>Adresse</th><th>Type</th><th class="r">Loyer £/mois</th><th class="r">Distance (miles)</th><th class="r">Poids</th><th>Source</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="foot">
+    Méthode : médiane des loyers affichés pondérée par la proximité (poids = 1 / (0,25 + distance)), moins la décote. Le loyer recommandé vise ce loyer de marché moins la marge de fidélisation. Il ne descend jamais sous le loyer actuel indexé sur le CPI et ne dépasse jamais le loyer de marché, plafond qu'appliquerait le First-tier Tribunal en cas de contestation. En Angleterre, une seule hausse par an est possible, notifiée par formulaire « section 13 » avec deux mois de préavis.
+    Sources : <a href="https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/consumerpriceinflation/august2026">ONS, inflation août 2026</a> ·
+    <a href="https://www.ons.gov.uk/visualisations/housingpriceslocal/E09000022/">ONS, loyers à Lambeth</a> ·
+    annonces Keating Estates, Zoopla, PrimeLocation, OnTheMarket, Rightmove, FJ Lord. Aide à la décision, pas une expertise.
+  </p>
+</div>
+
+<script>
+const DEFAULT_COMPS = [
+  ["Barrington Road, SW9", "1ch", 2150, 0.0, "Keating Estates"],
+  ["Barrington Road, SW9", "1ch", 2050, 0.0, "Zoopla / PrimeLocation"],
+  ["Coldharbour Lane, SW9", "1ch", 1850, 0.2, "Zoopla"],
+  ["Station Avenue, SW9", "1ch", 1500, 0.3, "FJ Lord"],
+  ["Loughborough Park, SW9", "1ch", 1750, 0.5, "OnTheMarket"],
+  ["Brixton, SW9 (meublé)", "1ch", 1700, 0.5, "Zoopla"],
+  ["Turner Close, SW9", "1ch", 1700, 0.6, "Zoopla"],
+  ["Horsford Road, SW2", "1ch", 1850, 0.9, "Rightmove"],
+  ["Charles Haller Street, SW2", "1ch", 1650, 1.0, "Rightmove"],
+  ["Brading Road, SW2", "1ch", 2100, 1.3, "Rightmove"],
+  ["Angell Road, SW9", "studio", 1350, 0.3, "Zoopla / PrimeLocation"],
+  ["Electric Avenue, SW9", "studio", 1375, 0.4, "Zoopla / PrimeLocation"],
+  ["Brixton Road, SW9", "studio", 1560, 0.5, "Rightmove"],
+  ["Brixton Road, SW9 (rénové)", "studio", 1200, 0.5, "Zoopla / PrimeLocation"],
+  ["Southey Road, SW9", "studio", 1350, 1.3, "Zoopla / PrimeLocation"],
+].map(([adresse, type, loyer, dist, source]) => ({ adresse, type, loyer, dist, source, on: true }));
+
+const DEFAULTS = { actuel: 1770, type: "1ch", cpi: 3.1, lambeth: 4.2, decote: 2, marge: 3 };
+const STORE = "loyer-barrington-v1";
+
+let comps = DEFAULT_COMPS.map(c => ({ ...c }));
+let state = { ...DEFAULTS };
+
+try {
+  const saved = JSON.parse(localStorage.getItem(STORE) || "null");
+  if (saved && Array.isArray(saved.comps)) { comps = saved.comps; state = { ...DEFAULTS, ...saved.state }; }
+} catch (e) {}
+
+const $ = id => document.getElementById(id);
+const gbp = x => "£" + Math.round(x).toLocaleString("fr-FR").replace(/ | /g, " ");
+const pct = x => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(1).replace(".", ",") + " %";
+const poids = d => 1 / (0.25 + d);
+const arrondir = (x, pas = 5, plafond = Infinity) => {
+  const r = Math.round(x / pas) * pas;
+  return r > plafond ? Math.floor(plafond / pas) * pas : r;
+};
+
+function quantilePondere(vals, ws, q) {
+  // valeurs identiques fusionnées : le résultat ne dépend pas de l'ordre des annonces
+  const m = new Map();
+  vals.forEach((v, i) => m.set(v, (m.get(v) || 0) + ws[i]));
+  const p = [...m.entries()].sort((a, b) => a[0] - b[0]);
+  const total = p.reduce((s, [, w]) => s + w, 0);
+  let cumul = 0; const pos = [];
+  for (const [v, w] of p) { pos.push([(cumul + w / 2) / total, v]); cumul += w; }
+  if (q <= pos[0][0]) return pos[0][1];
+  for (let i = 1; i < pos.length; i++) {
+    const [q0, v0] = pos[i - 1], [q1, v1] = pos[i];
+    if (q <= q1) return v0 + (v1 - v0) * (q - q0) / (q1 - q0);
+  }
+  return pos[pos.length - 1][1];
+}
+
+function calcul() {
+  const retenus = comps.filter(c => c.on && c.type === state.type && c.loyer > 0 && c.dist >= 0);
+  if (!retenus.length) return null;
+  const vals = retenus.map(c => c.loyer), ws = retenus.map(c => poids(c.dist));
+  const f = 1 - state.decote / 100;
+  const marche = quantilePondere(vals, ws, 0.5) * f;
+  const bas = quantilePondere(vals, ws, 0.25) * f;
+  const haut = quantilePondere(vals, ws, 0.75) * f;
+  const a = state.actuel;
+  const inflation = a * (1 + state.cpi / 100);
+  const locale = a * (1 + state.lambeth / 100);
+  const cible = marche * (1 - state.marge / 100);
+  let reco, regle;
+  if (a >= marche) { reco = a; regle = "au-dessus"; }
+  else {
+    const r = Math.max(inflation, cible);
+    reco = Math.min(marche, r);
+    regle = reco === marche ? "plafond" : (inflation >= cible ? "inflation" : "marche");
+  }
+  return { retenus, marche, bas, haut, inflation, locale, reco: reco === a ? a : arrondir(reco, 5, marche), regle };
+}
+
+function render() {
+  $("decote-o").textContent = state.decote.toString().replace(".", ",") + " %";
+  $("marge-o").textContent = state.marge.toString().replace(".", ",") + " %";
+  for (const b of document.querySelectorAll(".seg button")) b.setAttribute("aria-pressed", b.dataset.type === state.type);
+
+  const r = calcul();
+  renderRows();
+  if (!r || !(state.actuel > 0)) {
+    $("reco").innerHTML = "—";
+    $("delta").textContent = "";
+    $("status").innerHTML = "";
+    $("why").textContent = !r ? "Aucune annonce active pour ce type de bien. Cochez ou ajoutez des annonces ci-dessous." : "Saisissez le loyer actuel pour obtenir une recommandation.";
+    $("scen").innerHTML = ""; $("chart").innerHTML = ""; $("market-txt").textContent = "";
+    return;
+  }
+  const a = state.actuel, h = r.reco - a;
+  $("reco").innerHTML = gbp(r.reco) + "<small>/ mois</small>";
+  $("delta").innerHTML = h > 0
+    ? `<span class="pos">+${gbp(h)} / mois · ${pct(h / a)}</span><br><span style="color:var(--muted);font-size:14px">soit +${gbp(h * 12)} par an</span>`
+    : `<span style="color:var(--muted)">Pas de hausse</span>`;
+
+  const ecart = (a - r.marche) / r.marche;
+  $("status").innerHTML = a >= r.marche
+    ? `<span class="pill warn">▲ Loyer actuel au-dessus du marché (${pct(ecart)})</span>`
+    : `<span class="pill good">● Loyer actuel sous le marché (${pct(ecart)})</span>`;
+
+  const why = {
+    "inflation": `Le loyer actuel est déjà proche du marché (${gbp(r.marche)}). Viser le marché moins ${String(state.marge).replace(".", ",")} % donnerait moins que l'indexation sur l'inflation. La hausse suit donc l'inflation : ${pct(state.cpi / 100)}.`,
+    "marche": `Le loyer actuel est nettement sous le marché (${gbp(r.marche)}). La recommandation vise le marché moins ${String(state.marge).replace(".", ",")} % de marge de fidélisation. Pour une hausse importante, pensez à l'étaler sur deux ans.`,
+    "plafond": `L'indexation sur l'inflation dépasserait le loyer de marché. La recommandation s'arrête au marché (${gbp(r.marche)}), que le tribunal pourrait appliquer en cas de contestation.`,
+    "au-dessus": `Le loyer actuel dépasse déjà le loyer de marché estimé (${gbp(r.marche)}). Une hausse risquerait d'être annulée si le locataire la conteste devant le tribunal.`,
+  }[r.regle];
+  $("why").textContent = why;
+
+  const scen = [
+    ["Indexation sur l'inflation (CPI)", r.inflation, r.regle === "inflation"],
+    ["Tendance des loyers à Lambeth", r.locale, false],
+    ["Alignement complet sur le marché", r.marche, r.regle === "plafond"],
+    ["Recommandation", r.reco, r.regle === "marche" || r.regle === "au-dessus"],
+  ];
+  const maxS = Math.max(...scen.map(s => s[1]), a) * 1.02, minS = Math.min(...scen.map(s => s[1]), a) * 0.9;
+  $("scen").innerHTML = scen.map(([nom, v, pick]) => {
+    const d = v - a;
+    return `<div class="scen-row${pick || nom === "Recommandation" ? " pick" : ""}">
+      <span class="name">${nom}</span>
+      <span class="bar"><i style="width:${((v - minS) / (maxS - minS) * 100).toFixed(1)}%"></i></span>
+      <span class="v">${gbp(v)} <span style="color:var(--muted)">${pct(d / a)}</span></span></div>`;
+  }).join("");
+
+  $("market-txt").textContent = `Marché ${gbp(r.marche)} · fourchette ${gbp(r.bas)} – ${gbp(r.haut)}`;
+  drawChart(r);
+  save();
+}
+
+function drawChart(r) {
+  const svg = $("chart");
+  const W = svg.clientWidth || 600, H = 150, padL = 14, padR = 14, axisY = 118;
+  const all = r.retenus.map(c => c.loyer).concat([state.actuel, r.reco, r.bas, r.haut]);
+  let lo = Math.floor((Math.min(...all) - 50) / 100) * 100, hi = Math.ceil((Math.max(...all) + 50) / 100) * 100;
+  const x = v => padL + (v - lo) / (hi - lo) * (W - padL - padR);
+  const step = (hi - lo) > 1200 ? 200 : 100;
+  let s = "";
+  for (let v = lo; v <= hi; v += step) {
+    s += `<line x1="${x(v)}" x2="${x(v)}" y1="18" y2="${axisY}" stroke="var(--line-soft)" stroke-width="1"/>`;
+    s += `<text x="${x(v)}" y="${axisY + 18}" text-anchor="middle">${gbp(v)}</text>`;
+  }
+  s += `<rect x="${x(r.bas)}" y="24" width="${Math.max(2, x(r.haut) - x(r.bas))}" height="${axisY - 30}" fill="var(--band)" rx="4"/>`;
+  s += `<line x1="${x(r.marche)}" x2="${x(r.marche)}" y1="20" y2="${axisY - 4}" stroke="var(--ink-2)" stroke-width="2" stroke-dasharray="4 3"/>`;
+  s += `<text x="${x(r.marche)}" y="14" text-anchor="middle" style="fill:var(--ink-2)">marché</text>`;
+  s += `<line x1="${padL}" x2="${W - padR}" y1="${axisY}" y2="${axisY}" stroke="var(--line)" stroke-width="1"/>`;
+  // annonces : jitter vertical déterministe pour éviter les superpositions
+  const sorted = [...r.retenus].sort((a, b) => a.loyer - b.loyer);
+  const lanes = [];
+  sorted.forEach((c, i) => {
+    const rad = 4 + Math.min(5, poids(c.dist) * 1.3);
+    const cx = x(c.loyer);
+    let lane = 0;
+    while (lanes[lane] !== undefined && cx - lanes[lane] < 20) lane++;
+    lanes[lane] = cx;
+    const cy = 90 - lane * 20;
+    s += `<circle class="dot" data-i="${comps.indexOf(c)}" cx="${cx}" cy="${cy}" r="${rad}" fill="var(--ink-2)" stroke="var(--surface)" stroke-width="2"/>`;
+    s += `<circle class="hit" data-i="${comps.indexOf(c)}" cx="${cx}" cy="${cy}" r="${rad + 7}" fill="transparent"/>`;
+  });
+  // actuel & recommandé sur l'axe
+  s += `<circle cx="${x(state.actuel)}" cy="${axisY}" r="7" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/>`;
+  s += `<circle cx="${x(r.reco)}" cy="${axisY}" r="7" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+}
+
+const tip = $("tip");
+$("chart").addEventListener("pointermove", e => {
+  const t = e.target.closest(".hit");
+  if (!t) { tip.hidden = true; return; }
+  const c = comps[+t.dataset.i];
+  const box = $("chart-wrap").getBoundingClientRect(), cb = t.getBoundingClientRect();
+  tip.textContent = `${c.adresse} · ${gbp(c.loyer)} · ${String(c.dist).replace(".", ",")} mi`;
+  tip.style.left = (cb.left + cb.width / 2 - box.left) + "px";
+  tip.style.top = (cb.top - box.top) + "px";
+  tip.hidden = false;
+});
+$("chart").addEventListener("pointerleave", () => tip.hidden = true);
+
+function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
+
+function renderRows() {
+  const active = document.activeElement && document.activeElement.id;
+  const rows = comps.map((c, i) => ({ c, i })).filter(({ c }) => c.type === state.type);
+  $("rows").innerHTML = rows.map(({ c, i }) => `
+    <tr class="${c.on ? "" : "off"}">
+      <td><input type="checkbox" id="on-${i}" data-i="${i}" data-k="on" ${c.on ? "checked" : ""} aria-label="Inclure ${esc(c.adresse)}"></td>
+      <td><input type="text" id="ad-${i}" data-i="${i}" data-k="adresse" value="${esc(c.adresse)}" aria-label="Adresse"></td>
+      <td>${c.type === "1ch" ? "1 chambre" : "Studio"}</td>
+      <td class="r"><input type="number" id="lo-${i}" data-i="${i}" data-k="loyer" value="${c.loyer}" step="25" min="0" aria-label="Loyer"></td>
+      <td class="r"><input type="number" id="di-${i}" data-i="${i}" data-k="dist" value="${c.dist}" step="0.1" min="0" aria-label="Distance"></td>
+      <td class="r num">${poids(c.dist).toFixed(2).replace(".", ",")}</td>
+      <td style="color:var(--ink-2);white-space:nowrap">${esc(c.source)}</td>
+      <td><button type="button" class="x" data-del="${i}" aria-label="Supprimer ${esc(c.adresse)}">×</button></td>
+    </tr>`).join("");
+  if (active && $(active)) { const el = $(active); el.focus(); if (el.type === "text") { const n = el.value.length; el.setSelectionRange(n, n); } }
+}
+
+$("rows").addEventListener("input", e => {
+  const el = e.target, i = +el.dataset.i, k = el.dataset.k;
+  if (k === undefined) return;
+  comps[i][k] = k === "on" ? el.checked : k === "adresse" ? el.value : parseFloat(el.value) || 0;
+  render();
+});
+$("rows").addEventListener("click", e => {
+  const d = e.target.closest("[data-del]");
+  if (d) { comps.splice(+d.dataset.del, 1); render(); }
+});
+$("add").addEventListener("click", () => {
+  comps.push({ adresse: "Nouvelle annonce", type: state.type, loyer: 1800, dist: 0.5, source: "Saisie manuelle", on: true });
+  render();
+  const i = comps.length - 1; const el = $("ad-" + i); if (el) { el.focus(); el.select(); }
+});
+
+for (const [id, k] of [["actuel", "actuel"], ["cpi", "cpi"], ["lambeth", "lambeth"], ["decote", "decote"], ["marge", "marge"]]) {
+  $(id).value = state[k];
+  $(id).addEventListener("input", e => { state[k] = parseFloat(e.target.value) || 0; render(); });
+}
+for (const b of document.querySelectorAll(".seg button")) b.addEventListener("click", () => { state.type = b.dataset.type; render(); });
+$("form").addEventListener("submit", e => e.preventDefault());
+$("reset").addEventListener("click", () => {
+  comps = DEFAULT_COMPS.map(c => ({ ...c })); state = { ...DEFAULTS };
+  for (const k of ["actuel", "cpi", "lambeth", "decote", "marge"]) $(k).value = state[k];
+  render();
+});
+function save() { try { localStorage.setItem(STORE, JSON.stringify({ comps, state })); } catch (e) {} }
+window.addEventListener("resize", () => { const r = calcul(); if (r && state.actuel > 0) drawChart(r); });
+render();
+</script>

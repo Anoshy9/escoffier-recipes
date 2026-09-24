@@ -91,8 +91,14 @@ def charger_indicateurs(chemin: Path) -> dict:
 
 
 def quantile_pondere(valeurs: list[float], poids: list[float], q: float) -> float:
-    """Quantile pondéré avec interpolation linéaire entre les points médians."""
-    paires = sorted(zip(valeurs, poids))
+    """Quantile pondéré avec interpolation linéaire entre les points médians.
+
+    Les valeurs identiques sont fusionnées (poids additionnés) pour que le
+    résultat ne dépende pas de l'ordre des annonces."""
+    fusion: dict[float, float] = {}
+    for v, p in zip(valeurs, poids):
+        fusion[v] = fusion.get(v, 0.0) + p
+    paires = sorted(fusion.items())
     total = sum(p for _, p in paires)
     cumul = 0.0
     positions = []
@@ -133,8 +139,12 @@ def estimer_marche(
     )
 
 
-def arrondir(montant: float, pas: int = 5) -> float:
-    return round(montant / pas) * pas
+def arrondir(montant: float, pas: int = 5, plafond: float | None = None) -> float:
+    """Arrondit au pas le plus proche, sans dépasser le plafond éventuel."""
+    arrondi = round(montant / pas) * pas
+    if plafond is not None and arrondi > plafond:
+        arrondi = (plafond // pas) * pas
+    return arrondi
 
 
 def recommander(
@@ -168,7 +178,8 @@ def recommander(
         loyer_inflation=loyer_inflation,
         loyer_tendance_locale=loyer_tendance,
         loyer_marche=marche.loyer_marche,
-        loyer_recommande=arrondir(recommande),
+        loyer_recommande=recommande if recommande == loyer_actuel
+        else arrondir(recommande, plafond=marche.loyer_marche),
     )
 
 
