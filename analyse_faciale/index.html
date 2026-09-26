@@ -102,6 +102,19 @@ table.t{border-collapse:collapse;width:100%;font-size:13px}
 table.t td,table.t th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}
 table.t td.n{text-align:right;font-variant-numeric:tabular-nums}
 .hidden{display:none!important}
+.sws{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.sw{display:inline-flex;flex-direction:column;align-items:center;width:72px;font-size:11px;text-align:center;line-height:1.2;color:var(--muted)}
+.sw i{display:block;width:48px;height:48px;border-radius:10px;border:1px solid var(--line);margin-bottom:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sw.no i{position:relative;opacity:.85;background-image:linear-gradient(to top right,transparent calc(50% - 1.5px),var(--bad) calc(50% - 1.5px),var(--bad) calc(50% + 1.5px),transparent calc(50% + 1.5px))!important}
+.cchips{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:6px}
+.cchip{display:flex;gap:8px;align-items:center}
+.cchip i{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.color h4{margin:12px 0 2px;font:600 14px var(--sans)}
+.color select{font:13px var(--sans);padding:4px 6px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.dim{display:grid;grid-template-columns:70px minmax(0,1fr) 70px;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:6px 0}
+.dim span:last-child{text-align:right}
+.dim .track{position:relative;height:6px;border-radius:99px;background:var(--track)}
+.dim .dot{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;background:var(--ink);transform:translate(-50%,-50%)}
 .advice{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .advice h4,.tier h4{margin:0 0 4px;font:600 14px var(--sans)}
 .advice p{margin:0;font-size:14px}
@@ -246,7 +259,7 @@ const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-const S = { sex:'F', front:null, profile:null, frontRes:null, profRes:null };
+const S = { colorOv:{}, sex:'F', front:null, profile:null, frontRes:null, profRes:null };
 
 /* ------------------------------ géométrie ------------------------------ */
 const G = {
@@ -945,6 +958,7 @@ function drawFrontOverlay(c, T){
     line(p.goR,p.me,'rgba(255,160,90,.6)',1.2); line(p.goL,p.me,'rgba(255,160,90,.6)',1.2);
     line(p.ftR,p.ftL,'rgba(255,160,90,.5)',1,[4,4]);
   }
+  if(OV.skin && S.color){ for(const z of S.color.zones){ const s=T(z); c.beginPath(); c.arc(s.x,s.y,4,0,Math.PI*2); c.strokeStyle='#fff'; c.lineWidth=1.5; c.stroke(); } }
   if(OV.skin && S.skin){
     for(const z of S.skin.zones){ const s=T(z.c); c.beginPath(); c.arc(s.x,s.y,z.r*S.fv.k,0,Math.PI*2); c.strokeStyle='rgba(255,255,255,.85)'; c.setLineDash([3,3]); c.lineWidth=1.2; c.stroke(); c.setLineDash([]); }
   }
@@ -1013,7 +1027,7 @@ function updateFront(live){
   if(!S.frontRes){ box.innerHTML=''; return; }
   if(S.mouthGap > .08) S.frontRes.warnings.push('Bouche ouverte ou sourire détecté : le tiers inférieur, les lèvres et le menton sont faussés. Pour une analyse fiable, utilisez une photo avec une expression neutre et la bouche fermée.');
   clearTimeout(skinTimer);
-  const run = () => { S.skin = analyzeSkin(v.img, S.frontRes); renderFrontPanel(); v.draw(); };
+  const run = () => { S.skin = analyzeSkin(v.img, S.frontRes); S.color = analyzeColors(v.img, S.frontRes); renderFrontPanel(); v.draw(); };
   if(live) skinTimer = setTimeout(run, 250); else run();
   renderFrontPanel();
 }
@@ -1140,6 +1154,266 @@ $('#profNew').onclick = () => { $('#profFile').value=''; $('#profFile').click();
 $('#profZoom').onclick = () => { const v=S.pv; if(Object.keys(v.pts).length>2) v.fitPoints(.2); };
 $$('#profToggles input').forEach(i => i.addEventListener('change', () => { POV[i.dataset.pov]=i.checked; S.pv.showLabels=POV.labels; S.pv.draw(); }));
 
+/* ------------------------------ colorimétrie ------------------------------ */
+// Échantillonne un disque ou un anneau, puis moyenne robuste entre deux centiles de luminance.
+function sampleRGB(ctx, W, H, c, r0, r1, pLo, pHi){
+  const R = Math.ceil(r1), x0 = Math.max(0, Math.round(c.x-R)), y0 = Math.max(0, Math.round(c.y-R));
+  const x1 = Math.min(W, Math.round(c.x+R)+1), y1 = Math.min(H, Math.round(c.y+R)+1);
+  if(x1-x0 < 2 || y1-y0 < 2) return null;
+  const d = ctx.getImageData(x0, y0, x1-x0, y1-y0).data, w = x1-x0, px = [];
+  for(let y=y0; y<y1; y++) for(let x=x0; x<x1; x++){
+    const dd = Math.hypot(x-c.x, y-c.y); if(dd<r0 || dd>r1) continue;
+    const i = ((y-y0)*w + (x-x0))*4; px.push([d[i],d[i+1],d[i+2], .299*d[i]+.587*d[i+1]+.114*d[i+2]]);
+  }
+  if(px.length < 6) return null;
+  px.sort((a,b)=>a[3]-b[3]);
+  const s = px.slice(Math.floor(px.length*pLo), Math.max(Math.floor(px.length*pLo)+1, Math.floor(px.length*pHi)));
+  const m = [0,1,2].map(k => s.reduce((a,p)=>a+p[k],0)/s.length);
+  return m;
+}
+const mixRGB = (a,b) => a&&b ? a.map((v,i)=>(v+b[i])/2) : (a||b);
+const lab = rgb => srgb2lab(...rgb.map(v=>Math.max(0,Math.min(255,v))));
+const hex = rgb => '#'+rgb.map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');
+function hueDeg(a,b){ let h = Math.atan2(b,a)*180/Math.PI; return h<0 ? h+360 : h; }
+
+function analyzeColors(img, res){
+  const {p, roll, C} = res.geom, back = q => G.rot(q, C, roll);
+  const ctx = img.getContext('2d', {willReadFrequently:true}), W = img.width, H = img.height;
+  const eyeW = (G.dist(p.exR,p.enR)+G.dist(p.exL,p.enL))/2;
+  const irisR = S.irisPx ? S.irisPx/2 : eyeW*.2;
+  const smp = (q, r0, r1, lo, hi) => sampleRGB(ctx, W, H, back(q), r0, r1, lo, hi);
+  // Blanc de l'œil (sclère), de part et d'autre de l'iris : référence de balance des blancs
+  const scl = [];
+  for(const s of ['R','L']){
+    const pu = p['pu'+s];
+    for(const k of ['en','ex']){ const e = p[k+s], dir = Math.sign(e.x-pu.x);
+      const q = {x: pu.x + dir*(irisR + (Math.abs(e.x-pu.x)-irisR)*.45), y: pu.y};
+      const v = smp(q, 0, Math.max(2, eyeW*.06), .5, 1); if(v) scl.push(v); }
+  }
+  let gains = [1,1,1], wb = false;
+  if(scl.length){
+    const sc = [0,1,2].map(k=>scl.reduce((a,v)=>a+v[k],0)/scl.length), L = lab(sc);
+    if(L[0] > 45 && Math.hypot(L[1],L[2]) < 30){
+      const g = (sc[0]+sc[1]+sc[2])/3;
+      gains = sc.map(v => Math.max(.8, Math.min(1.25, 1 + .7*(g/v - 1)))); wb = true;
+    }
+  }
+  const corr = rgb => rgb && rgb.map((v,i)=>v*gains[i]);
+  // Peau : joues + front, centiles 15-50 (demi-tons : sans reflets ni ombres profondes)
+  const zones = skinZones(res).filter(z=>z.kind==='cheek'||z.kind==='fore');
+  let skin = null; for(const z of zones){ const v = sampleRGB(ctx,W,H,z.c,0,z.r,.15,.5); skin = mixRGB(skin, v); }
+  // Iris : anneau sans pupille ni reflets
+  let iris = null; for(const s of ['R','L']) iris = mixRGB(iris, smp(p['pu'+s], irisR*.45, irisR*.9, .15, .7));
+  // Sourcils : moitié la plus sombre autour du pic et entre tête et pic
+  let brow = null; for(const s of ['R','L']){ brow = mixRGB(brow, smp(p['bp'+s], 0, eyeW*.08, 0, .5)); brow = mixRGB(brow, smp(G.mid(p['bh'+s],p['bp'+s]), 0, eyeW*.07, 0, .5)); }
+  // Cheveux : au-dessus du trichion
+  const hairQ = {x:p.tr.x, y:p.tr.y - eyeW*.45};
+  let hair = smp(hairQ, 0, eyeW*.35, .05, .45);
+  const out = { wb, skin:corr(skin), iris:corr(iris), brow:corr(brow), hair:corr(hair) };
+  if(out.hair && out.skin){ const a = lab(out.hair), b = lab(out.skin); if(Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]) < 10) { out.hair = null; out.hairNote = 'zone au-dessus du front proche de la peau (front dégagé ou calvitie) : les sourcils servent de référence'; } }
+  out.zones = [hairQ, ...['R','L'].map(s=>p['pu'+s])].map(back);
+  return out;
+}
+
+// Choix manuels (les photos trompent souvent : lumière, balance des blancs)
+const HAIR_OPTS = {
+  noir:{t:'Noir', L:14, w:0, c:3}, brunf:{t:'Brun foncé', L:24, w:.1, c:8}, chatain:{t:'Châtain', L:36, w:.2, c:14},
+  chatclair:{t:'Châtain clair', L:47, w:.2, c:16}, blondf:{t:'Blond foncé', L:55, w:.1, c:16}, blond:{t:'Blond clair', L:70, w:.2, c:20},
+  dore:{t:'Blond doré / miel', L:64, w:.7, c:28}, roux:{t:'Roux / cuivré', L:45, w:1, c:38}, auburn:{t:'Auburn', L:33, w:.8, c:28},
+  chatcendre:{t:'Châtain cendré', L:40, w:-.6, c:6}, blondcendre:{t:'Blond cendré', L:62, w:-.6, c:8}, gris:{t:'Gris / blanc', L:72, w:-.7, c:4},
+};
+const SKIN_DEPTH = {
+  tclaire:{t:'Très claire', L:78}, claire:{t:'Claire', L:70}, moyenne:{t:'Moyenne', L:61},
+  mate:{t:'Mate', L:52}, foncee:{t:'Foncée', L:42}, tfoncee:{t:'Très foncée', L:32},
+};
+const EYE_OPTS = {
+  noir:{t:'Brun très foncé', L:22, w:.1, c:8}, brun:{t:'Brun', L:32, w:.35, c:16}, noisette:{t:'Noisette', L:40, w:.5, c:20},
+  vert:{t:'Vert', L:46, w:.2, c:18}, vertgris:{t:'Vert-gris', L:50, w:-.2, c:10}, bleu:{t:'Bleu', L:52, w:-.5, c:18},
+  bleuvif:{t:'Bleu vif / turquoise', L:55, w:-.4, c:30}, gris:{t:'Gris / bleu-gris', L:55, w:-.45, c:7},
+};
+function describeHair(rgb){
+  const [L,a,b] = lab(rgb), c = Math.hypot(a,b), h = hueDeg(a,b);
+  let base = L<20?'noir':L<30?'brunf':L<42?'chatain':L<52?'chatclair':L<60?'blondf':'blond';
+  if(c>22 && a>12 && L<60) base = L<38?'auburn':'roux';
+  else if(L>=52 && c>20 && h>60) base = 'dore';
+  else if(c<7 && L>=34) base = L>65?'gris':L>52?'blondcendre':'chatcendre';
+  return {key:base, L, c, w:(h>55&&c>10?.3:0) + (a>10&&c>18?.4:0) - (c<7?.4:0)};
+}
+function describeEye(rgb){
+  const [L,a,b] = lab(rgb), c = Math.hypot(a,b), h = hueDeg(a,b);
+  let key;
+  if(b < 2 || h > 180) key = c>18?'bleuvif':c>9?'bleu':'gris';
+  else if(L<28) key = 'noir';
+  else if(h>=95) key = c>9?'vert':'vertgris';
+  else if(c<8) key = L>48?'gris':'brun';
+  else key = L>40 && h>65 ? 'noisette' : 'brun';
+  return {key, L, c};
+}
+
+// 12 saisons : [nom, hex]
+const SEASONS = {
+  'Printemps clair':{fam:'Printemps', d:'Clair, chaud et délicat. Les couleurs légères, lumineuses et tièdes vous éclairent. Le noir et les tons très sombres vous « mangent ».',
+    best:[['Pêche','#FFC8A2'],['Corail clair','#F88379'],['Saumon','#F4A69A'],['Jaune beurre','#F8E27A'],['Menthe tiède','#98D7A5'],['Turquoise clair','#7FD1C7'],['Bleu ciel chaud','#87BFE8'],['Pervenche','#9FA8DA'],['Abricot','#FBCEB1'],['Vert pomme','#B5D66B']],
+    neutral:[['Ivoire','#FFF4DC'],['Camel clair','#D8B48A'],['Grège chaud','#CFC6B8'],['Marine clair','#4A6FA5']],
+    avoid:[['Noir','#111111'],['Bordeaux','#5E1A2B'],['Brun foncé','#4A2C1D'],['Anthracite','#3A3A3A'],['Fuchsia froid','#C2185B']],
+    metal:'Or clair, or rose', lips:[['Pêche','#F2A07B'],['Corail clair','#F27D6B'],['Rose saumon','#E88D83']],
+    hairDye:'Blond doré, miel, blond vénitien, reflets cuivrés clairs. À éviter : cendré, noir.', frames:'Écaille claire, miel, or clair, corail, turquoise.'},
+  'Printemps chaud':{fam:'Printemps', d:'Chaud et vif. Les couleurs dorées, ensoleillées et franches vous vont. Les tons froids et grisés vous éteignent.',
+    best:[['Corail','#FF6F50'],['Orange vif','#FF8C2A'],['Jaune soleil','#FFC72C'],['Vert herbe','#66B032'],['Turquoise','#1FB5A8'],['Bleu chaud','#2F9BD6'],['Rouge tomate','#E8412B'],['Pêche','#FFB38A'],['Vert pomme','#8DC63F'],['Camel','#C19A6B']],
+    neutral:[['Camel','#C19A6B'],['Beige doré','#E3C9A0'],['Marine chaud','#2E4A7A'],['Chocolat au lait','#8A5A3B']],
+    avoid:[['Noir','#111111'],['Gris froid','#8C939D'],['Rose poudré froid','#D8A9C4'],['Bordeaux violacé','#6B1F3A'],['Blanc optique','#FFFFFF']],
+    metal:'Or jaune, laiton', lips:[['Corail','#F2694E'],['Rouge tomate','#D9412B'],['Pêche','#F29B72']],
+    hairDye:'Doré, cuivré, blond miel, châtain doré. À éviter : cendré, noir bleuté.', frames:'Écaille dorée, or, marron chaud, vert, orange.'},
+  'Printemps lumineux':{fam:'Printemps', d:'Lumineux et contrasté, à tendance chaude. Les couleurs vives et saturées vous subliment. Les tons poussiéreux et ternes vous fatiguent.',
+    best:[['Rouge vif chaud','#E8262A'],['Corail vif','#FF5A4F'],['Turquoise vif','#00B5AD'],['Émeraude chaud','#00A36C'],['Bleu roi chaud','#1F5FD6'],['Rose vif','#FF4F8B'],['Jaune citron','#FFE135'],['Violet vif','#7A3FD1'],['Vert lime','#7FD13B'],['Orange mandarine','#FF7F11']],
+    neutral:[['Blanc cassé','#FAF6EE'],['Marine','#1D2B5A'],['Gris chaud moyen','#8C8479'],['Chocolat','#5A3A26']],
+    avoid:[['Vieux rose','#C08081'],['Kaki grisé','#8A8458'],['Taupe terne','#8B7D6B'],['Moutarde sourde','#B59B3B'],['Beige grisé','#BDB3A3']],
+    metal:'Or brillant, or rose', lips:[['Corail vif','#F2553F'],['Rouge chaud','#D92B2B'],['Rose vif','#F2477E']],
+    hairDye:'Châtain doré, cuivré lumineux, balayage caramel contrasté. À éviter : cendré terne.', frames:'Couleurs franches : rouge, bleu vif, écaille contrastée, or brillant.'},
+  'Été clair':{fam:'Été', d:'Clair, froid et doux. Les pastels frais et poudrés vous vont. Les couleurs très sombres, dorées ou orangées vous durcissent.',
+    best:[['Rose poudré','#F4B6C2'],['Bleu layette','#A7C7E7'],['Lavande','#C8B6E2'],['Menthe froide','#B5E3D8'],['Gris-bleu','#9AB3C9'],['Framboise claire','#D96A8C'],['Pervenche','#8EA2D8'],['Aqua','#7FC8D1'],['Lilas','#C3A6D8'],['Rose dragée','#F7C6D9']],
+    neutral:[['Gris perle','#D9DCE1'],['Taupe rosé','#B8A9A3'],['Marine doux','#3E5577'],['Blanc cassé froid','#F5F5F2']],
+    avoid:[['Orange','#FF7F00'],['Noir','#111111'],['Moutarde','#D4A017'],['Brun chaud','#6B3E26'],['Olive','#708238']],
+    metal:'Argent, or blanc', lips:[['Rose poudré','#E59BAE'],['Framboise légère','#D0678A'],['Mauve clair','#B886A8']],
+    hairDye:'Blond cendré, blond beige froid, balayage perle. À éviter : cuivré, doré intense.', frames:'Argent, écaille grise, bleu clair, rose poudré, transparent.'},
+  'Été froid':{fam:'Été', d:'Froid et modéré. Les bleus, les roses et les baies à sous-ton bleuté vous vont. Les tons dorés et orangés vous jaunissent.',
+    best:[['Bleu denim','#5B7DB1'],['Framboise','#C72C69'],['Rose froid','#E48CB2'],['Prune douce','#8E4585'],['Vert d\'eau','#7BB7A8'],['Bleu-gris','#6E8CA8'],['Lavande','#A89CCF'],['Rouge framboise','#B3244B'],['Bleu ciel froid','#8CB8E0'],['Émeraude doux','#3E8E7E']],
+    neutral:[['Gris ardoise','#6E7B8B'],['Marine','#2C3E5C'],['Taupe froid','#9A8F8A'],['Blanc cassé froid','#F2F2EF']],
+    avoid:[['Orange','#FF7F00'],['Doré','#D4AF37'],['Camel','#C19A6B'],['Chartreuse','#A3C82E'],['Brun chaud','#6B3E26']],
+    metal:'Argent, platine', lips:[['Framboise','#C0406A'],['Rose froid','#D9759C'],['Baie','#8E2F55']],
+    hairDye:'Châtain cendré, blond froid, brun froid. À éviter : cuivré, doré.', frames:'Argent, gris, bleu marine, bordeaux froid, écaille froide.'},
+  'Été doux':{fam:'Été', d:'Doux, grisé et légèrement froid. Les couleurs poudrées et mélangées de gris vous harmonisent. Les couleurs vives et le contraste noir/blanc vous écrasent.',
+    best:[['Vieux rose','#C08081'],['Bleu-gris','#7D93A8'],['Sauge','#9CAF88'],['Mauve','#A57C9E'],['Canard doux','#4F7C82'],['Prune grisée','#7A5468'],['Rose cendré','#C9A0A6'],['Lilas grisé','#B7A6C9'],['Bleu jean délavé','#8DA4BF'],['Vert gris','#8FA39A']],
+    neutral:[['Taupe','#8B7D77'],['Gris doux','#9EA3A8'],['Marine grisé','#3F4E63'],['Crème grise','#EAE4DA']],
+    avoid:[['Noir','#111111'],['Blanc pur','#FFFFFF'],['Orange vif','#FF6A00'],['Rouge vif','#E4002B'],['Jaune vif','#FFE135']],
+    metal:'Argent mat, or rose', lips:[['Rose ancien','#C27D86'],['Mauve','#A0687F'],['Framboise douce','#B45A76']],
+    hairDye:'Blond beige, châtain cendré doux, balayage fondu. À éviter : noir, cuivré vif.', frames:'Écaille grise, taupe, argent mat, bleu-gris, rose cendré.'},
+  'Automne doux':{fam:'Automne', d:'Doux, chaud et nuancé. Les tons naturels, terreux et poudrés vous vont. Les couleurs vives, froides et le noir durcissent vos traits.',
+    best:[['Sauge','#9CAF88'],['Olive doux','#8A8A5C'],['Saumon doux','#E3A18A'],['Terracotta doux','#C47A5A'],['Turquoise grisé','#6FA6A0'],['Moutarde douce','#C9A74A'],['Camel','#C19A6B'],['Canard grisé','#5E8A8C'],['Vieux rose chaud','#C4867A'],['Pêche grisée','#DDB59A']],
+    neutral:[['Taupe chaud','#9A8878'],['Beige','#D8C3A5'],['Kaki','#8B8558'],['Chocolat au lait','#7B5B45']],
+    avoid:[['Noir','#111111'],['Blanc pur','#FFFFFF'],['Fuchsia','#E0218A'],['Bleu roi vif','#2349C8'],['Rose bonbon','#FF69B4']],
+    metal:'Or mat, bronze', lips:[['Nude rosé chaud','#C98C7A'],['Terracotta doux','#B8694F'],['Rose saumon','#D98A7A']],
+    hairDye:'Blond foncé doré, châtain caramel, balayage beige doré. À éviter : noir, platine.', frames:'Écaille douce, bronze, olive, taupe chaud.'},
+  'Automne chaud':{fam:'Automne', d:'Chaud et riche. Les couleurs épicées, terreuses et dorées vous illuminent. Les tons froids et pastel vous pâlissent.',
+    best:[['Rouille','#B7410E'],['Terracotta','#C8553D'],['Moutarde','#D4A017'],['Olive','#708238'],['Vert forêt','#3B5E2B'],['Orange brûlé','#CC5500'],['Bleu canard','#1F6E73'],['Brique','#8E3B2F'],['Bronze','#A0703A'],['Jaune ocre','#CC9A2F']],
+    neutral:[['Chocolat','#4A2C1D'],['Camel','#C19A6B'],['Kaki','#7A7446'],['Crème','#F3E5C8']],
+    avoid:[['Noir','#111111'],['Gris froid','#8C939D'],['Rose pastel','#F7C6D9'],['Bleu glacier','#CFE8F7'],['Fuchsia','#E0218A']],
+    metal:'Or, cuivre, bronze', lips:[['Brique','#A4412F'],['Terracotta','#B9573F'],['Orangé brun','#B5542E']],
+    hairDye:'Cuivré, auburn, châtain chaud, chocolat doré. À éviter : cendré, platine.', frames:'Écaille foncée, cuivre, or, vert olive, marron.'},
+  'Automne profond':{fam:'Automne', d:'Profond et chaud. Les couleurs sombres, riches et chaudes vous vont. Les pastels et les tons clairs froids vous effacent.',
+    best:[['Bordeaux chaud','#7B1E1E'],['Vert forêt','#1F4D2B'],['Bleu pétrole','#0F4C5C'],['Rouille','#9C3D12'],['Aubergine chaud','#5A2A3C'],['Moutarde foncé','#B8860B'],['Rouge tomate foncé','#B22222'],['Olive foncé','#556B2F'],['Cuivre','#B87333'],['Émeraude profond','#0B6E4F']],
+    neutral:[['Chocolat noir','#3B2418'],['Noir chaud','#2B211C'],['Marine profond','#1C2841'],['Crème','#F2E6CC']],
+    avoid:[['Rose bonbon','#FF9EC7'],['Lilas','#C8A2C8'],['Bleu layette','#A7C7E7'],['Gris clair froid','#D3D6DB'],['Pastels','#F7E1EA']],
+    metal:'Or, bronze, cuivre', lips:[['Bordeaux','#7A2230'],['Brique foncé','#8C3325'],['Prune chaude','#6E2E3E']],
+    hairDye:'Brun chocolat, noir chaud, auburn profond. À éviter : blond cendré, platine.', frames:'Écaille foncée, noir chaud, bordeaux, vert forêt.'},
+  'Hiver profond':{fam:'Hiver', d:'Profond et froid, avec du contraste. Les couleurs sombres et intenses ainsi que le noir vous vont. Les tons chauds et terreux vous ternissent.',
+    best:[['Noir','#111111'],['Blanc pur','#FFFFFF'],['Rouge vrai','#C8102E'],['Émeraude','#046A38'],['Saphir','#0F52BA'],['Prune','#5C2751'],['Fuchsia foncé','#B0006D'],['Bleu nuit','#0B1F4A'],['Bordeaux froid','#6D0F2B'],['Violet profond','#4B0F6E']],
+    neutral:[['Noir','#111111'],['Anthracite','#333333'],['Marine','#13213F'],['Blanc pur','#FFFFFF']],
+    avoid:[['Orange','#FF7F00'],['Camel','#C19A6B'],['Beige doré','#E3C9A0'],['Pêche','#FFC8A2'],['Moutarde','#D4A017']],
+    metal:'Argent, platine, or blanc', lips:[['Rouge bleuté','#B3122E'],['Prune','#6B1E48'],['Bordeaux froid','#7A1433']],
+    hairDye:'Brun profond, noir, brun froid. À éviter : doré, cuivré, blond.', frames:'Noir, argent, bleu nuit, bordeaux, écaille très foncée.'},
+  'Hiver froid':{fam:'Hiver', d:'Froid et net. Les couleurs pures, glacées et contrastées vous vont. Les tons chauds, dorés et terreux vous jaunissent.',
+    best:[['Blanc pur','#FFFFFF'],['Noir','#111111'],['Framboise froid','#D0104C'],['Fuchsia','#E0218A'],['Bleu roi','#2349C8'],['Émeraude','#009B77'],['Violet','#6A0DAD'],['Bleu glacier','#CFE8F7'],['Rose glacé','#F7D6E6'],['Rouge bleuté','#C8102E']],
+    neutral:[['Noir','#111111'],['Anthracite','#333333'],['Gris clair froid','#D3D6DB'],['Marine','#1B2A4A']],
+    avoid:[['Orange','#FF7F00'],['Camel','#C19A6B'],['Brun chaud','#6B3E26'],['Jaune doré','#E1AD01'],['Olive','#708238']],
+    metal:'Argent, platine', lips:[['Fuchsia','#C8207A'],['Rouge bleuté','#B3122E'],['Baie','#7E1F4E']],
+    hairDye:'Noir, brun froid, châtain cendré, blanc/gris assumé. À éviter : cuivré, doré.', frames:'Noir, argent, bleu roi, transparent glacé.'},
+  'Hiver lumineux':{fam:'Hiver', d:'Lumineux, contrasté et froid. Les couleurs vives et glacées et le contraste noir/blanc vous vont. Les tons poussiéreux et beiges vous éteignent.',
+    best:[['Blanc pur','#FFFFFF'],['Noir','#111111'],['Rouge vif','#E4002B'],['Fuchsia vif','#FF1493'],['Bleu électrique','#1F51FF'],['Turquoise vif','#00CED1'],['Émeraude vif','#00A86B'],['Citron glacé','#F5F28A'],['Violet vif','#8A2BE2'],['Rose glacé','#F9D1E6']],
+    neutral:[['Noir','#111111'],['Blanc pur','#FFFFFF'],['Anthracite','#333333'],['Marine','#1B2A4A']],
+    avoid:[['Taupe','#8B7D6B'],['Kaki','#8A8458'],['Vieux rose','#C08081'],['Moutarde','#B59B3B'],['Beige terne','#BDB3A3']],
+    metal:'Argent brillant, or blanc', lips:[['Rouge vif','#D40F2F'],['Fuchsia','#E0218A'],['Framboise vive','#C8104F']],
+    hairDye:'Brun foncé ou noir brillant, brun froid. À éviter : blond doré, caramel.', frames:'Noir, couleurs vives et froides (bleu, rouge), argent.'},
+};
+
+function colorProfile(col, ov){
+  if(!col || !col.skin) return null;
+  let [Ls,as,bs] = lab(col.skin); const hs = hueDeg(as,bs);
+  if(ov.depth && SKIN_DEPTH[ov.depth]) Ls = SKIN_DEPTH[ov.depth].L;
+  // Cheveux : choix manuel, sinon cheveux détectés, sinon sourcils
+  let hair;
+  if(ov.hair && HAIR_OPTS[ov.hair]) hair = {...HAIR_OPTS[ov.hair], key:ov.hair, manual:true};
+  else { const src = col.hair || col.brow; if(src){ const d = describeHair(src); hair = {...HAIR_OPTS[d.key], key:d.key, L:d.L, c:d.c, w:d.w, rgb:src, fromBrow:!col.hair}; } }
+  let eye;
+  if(ov.eye && EYE_OPTS[ov.eye]) eye = {...EYE_OPTS[ov.eye], key:ov.eye, manual:true};
+  else if(col.iris){ const d = describeEye(col.iris); eye = {...EYE_OPTS[d.key], key:d.key, L:d.L, c:d.c, rgb:col.iris}; }
+  // Température : angle de teinte de la peau (≈ 55° neutre), puis cheveux et yeux
+  let Tskin = Math.max(-1, Math.min(1, (hs-56)/9));
+  if(ov.under==='chaud') Tskin = 1; else if(ov.under==='froid') Tskin = -1; else if(ov.under==='neutre') Tskin = 0;
+  const T = .6*Tskin + .25*(hair?hair.w:0) + .15*(eye?eye.w:0);
+  const n = (v,a,b) => Math.max(0, Math.min(1, (v-a)/(b-a)));
+  const D = 1 - (.5*n(Ls,30,80) + .35*(hair?n(hair.L,12,75):.5) + .15*(eye?n(eye.L,18,60):.5));
+  const contrast = Math.max(hair?Math.abs(Ls-hair.L):0, eye?Math.abs(Ls-eye.L)*.8:0);
+  const Cl = .55*n(contrast,10,50) + .45*(eye?n(eye.c,5,28):.5);
+  const dims = {warm:Math.max(0,T), cool:Math.max(0,-T), deep:Math.max(0,(D-.5)*2), light:Math.max(0,(.5-D)*2), clear:Math.max(0,(Cl-.5)*2), soft:Math.max(0,(.5-Cl)*2)};
+  const pick = k => ({
+    deep: T>=0?'Automne profond':'Hiver profond', light: T>=0?'Printemps clair':'Été clair',
+    clear: T>=0?'Printemps lumineux':'Hiver lumineux', soft: T>=0?'Automne doux':'Été doux',
+    warm: (D-.5)+(.5-Cl) > 0 ? 'Automne chaud':'Printemps chaud', cool: (D-.5)+(Cl-.5) > 0 ? 'Hiver froid':'Été froid',
+  })[k];
+  const order = Object.entries(dims).sort((a,b)=>b[1]-a[1]);
+  const season = pick(order[0][0]);
+  const alt = order.slice(1).map(o=>pick(o[0])).find(s=>s!==season);
+  const under = Tskin>.35?'chaud':Tskin<-.35?'froid':'neutre';
+  const contrastLvl = contrast<20?'faible':contrast<38?'moyen':'élevé';
+  return {season, alt, T, D, Cl, dims, dominant:order[0][0], under, hs, Ls, contrast, contrastLvl, hair, eye};
+}
+
+const DIM_TXT = {warm:'chaud', cool:'froid', deep:'profond', light:'clair', clear:'lumineux', soft:'doux'};
+function swatch([name, hx], avoid){
+  return `<span class="sw${avoid?' no':''}"><i style="background:${hx}"></i><span>${esc(name)}</span></span>`;
+}
+function dimBar(label0, label1, v){ // v dans [0,1]
+  return `<div class="dim"><span>${label0}</span><div class="track"><div class="dot" style="left:${(Math.max(0,Math.min(1,v))*100).toFixed(1)}%"></div></div><span>${label1}</span></div>`;
+}
+function colorHTML(col, sex){
+  const ov = S.colorOv;
+  const P = colorProfile(col, ov);
+  if(!P) return '';
+  const Z = SEASONS[P.season];
+  const opt = (obj, cur) => `<option value="">Auto</option>` + Object.entries(obj).map(([k,v])=>`<option value="${k}" ${cur===k?'selected':''}>${esc(v.t)}</option>`).join('');
+  const chip = (label, rgb, txt) => `<div class="cchip"><i style="background:${rgb?hex(rgb):'transparent'}"></i><div><div class="small muted">${label}</div><strong>${esc(txt)}</strong></div></div>`;
+  const tips = [];
+  if(P.contrastLvl==='élevé') tips.push('Contraste naturel élevé : osez les associations contrastées (foncé + clair, couleur vive + neutre), qui reprennent votre propre contraste.');
+  else if(P.contrastLvl==='faible') tips.push('Contraste naturel faible : préférez des tenues ton sur ton ou en camaïeu. Un fort contraste noir/blanc attirerait le regard loin du visage.');
+  else tips.push('Contraste naturel moyen : associez des couleurs d\'intensité moyenne, en évitant les extrêmes (noir + blanc pur).');
+  if(S.skin && S.skin.R.redness>=3) tips.push('Rougeurs : évitez le rouge vif et le rose chaud près du visage, qui les accentuent. Les verts et bleus-verts de votre palette les neutralisent visuellement.');
+  if(S.skin && S.skin.R.dark!=null && S.skin.R.dark>=12) tips.push('Cernes marqués : évitez les violets, gris et bruns sombres portés au col. Une couleur claire et lumineuse de votre palette près du visage renvoie de la lumière.');
+  if(sex==='M') tips.push('Pour un homme, la palette s\'applique d\'abord aux chemises, t-shirts, pulls et écharpes, c\'est-à-dire aux couleurs près du visage. Les pantalons comptent peu.');
+  else tips.push('Maquillage : fond de teint à sous-ton '+(P.under==='chaud'?'doré / jaune':P.under==='froid'?'rosé':'neutre')+', blush et rouge à lèvres choisis dans la palette ci-dessous.');
+  return `
+  <div class="cat">Colorimétrie</div>
+  <div class="panel color">
+    <div class="cchips">
+      ${chip('Peau', col.skin, (ov.depth?SKIN_DEPTH[ov.depth].t+', ':'')+'sous-ton '+P.under)}
+      ${chip('Yeux', P.eye&&P.eye.rgb, P.eye?P.eye.t:'—')}
+      ${chip(P.hair&&P.hair.fromBrow?'Cheveux (d\'après les sourcils)':'Cheveux', P.hair&&P.hair.rgb, P.hair?P.hair.t:'—')}
+    </div>
+    <p class="small muted">${col.wb?'Balance des blancs corrigée à partir du blanc des yeux.':'Balance des blancs non corrigée : prenez la photo à la lumière du jour, sans filtre.'} ${col.hairNote?esc(col.hairNote)+'.':''} Si une couleur est mal détectée, corrigez-la :</p>
+    <div class="bar no-print">
+      <label class="small">Sous-ton <select data-cov="under"><option value="">Auto</option>${['chaud','neutre','froid'].map(k=>`<option ${ov.under===k?'selected':''}>${k}</option>`).join('')}</select></label>
+      <label class="small">Carnation <select data-cov="depth">${opt(SKIN_DEPTH, ov.depth)}</select></label>
+      <label class="small">Cheveux naturels <select data-cov="hair">${opt(HAIR_OPTS, ov.hair)}</select></label>
+      <label class="small">Yeux <select data-cov="eye">${opt(EYE_OPTS, ov.eye)}</select></label>
+    </div>
+    ${dimBar('Froid','Chaud',(P.T+1)/2)}${dimBar('Clair','Profond',P.D)}${dimBar('Doux','Lumineux',P.Cl)}
+    <p class="small muted">Contraste naturel : <strong>${P.contrastLvl}</strong> · caractéristique dominante : <strong>${DIM_TXT[P.dominant]}</strong></p>
+    <h3 style="margin-top:10px">${esc(P.season)} <span class="muted small">· saison voisine : ${esc(P.alt)}</span></h3>
+    <p>${esc(Z.d)}</p>
+    ${Math.abs(P.T)<.15?`<p class="small"><em>Votre température est proche du neutre : les couleurs de la saison voisine (${esc(P.alt)}) peuvent aussi vous aller. Les teintes « intermédiaires » (ni très chaudes, ni très froides) de chaque palette sont les plus sûres.</em></p>`:''}
+    <h4>Vos meilleures couleurs</h4><div class="sws">${Z.best.map(c=>swatch(c)).join('')}</div>
+    <h4>Neutres de base</h4><div class="sws">${Z.neutral.map(c=>swatch(c)).join('')}</div>
+    <h4>À éviter près du visage</h4><div class="sws">${Z.avoid.map(c=>swatch(c,true)).join('')}</div>
+    <div class="cols2" style="margin-top:10px">
+      <div class="advice"><h4>Bijoux et métaux</h4><p>${esc(Z.metal)}</p></div>
+      <div class="advice"><h4>Montures de lunettes</h4><p>${esc(Z.frames)}</p></div>
+      <div class="advice"><h4>Coloration des cheveux</h4><p>${esc(Z.hairDye)}</p></div>
+      ${sex==='F'?`<div class="advice"><h4>Rouges à lèvres</h4><div class="sws">${Z.lips.map(c=>swatch(c)).join('')}</div></div>`:`<div class="advice"><h4>Barbe</h4><p>${esc(Z.fam==='Hiver'||Z.fam==='Été'?'Si vous teintez la barbe, restez sur des bruns froids ou naturels : jamais de roux ni de doré.':'Les reflets chauds naturels de la barbe sont un atout. Si vous la teintez, choisissez des bruns chauds, jamais un noir bleuté.')}</p></div>`}
+    </div>
+    <ul>${tips.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>
+    <p class="small muted">Testez en tenant un tissu de chaque couleur sous le menton, à la lumière du jour, sans maquillage. La bonne couleur unifie le teint et estompe les cernes. La mauvaise souligne les ombres et les rougeurs.</p>
+  </div>`;
+}
 /* ------------------------------ recommandations ------------------------------ */
 // Niveaux d'intervention, du plus simple au plus lourd.
 const TIERS = {
@@ -1387,6 +1661,7 @@ function adviceHTML(A){
   ${A.prio.length ? `<div class="cat">Priorités</div><ol class="prio">${A.prio.map(({m})=>`<li><strong>${esc(m.name)}</strong> <span class="muted small">${esc(m.disp)} · réf. ${esc(m.idealDisp)}</span><br><span class="small">${esc(m.dir==='lo'?m.lo:m.hi)}${(m.id==='thirdU'||m.id==='lengthRatio')&&S.fv.flags.tr?' <em>À confirmer : la ligne des cheveux a été estimée, ajustez le point orange.</em>':''}</span></li>`).join('')}</ol>
   <div class="cat">Plan d'action</div>${['S','K','N','C'].map(tierBlock).join('')}` : '<p>Aucun écart notable : l\'essentiel est de mettre en valeur vos proportions actuelles (voir ci-dessous).</p>'}
   ${A.keep.length?`<div class="cat">Vos atouts à mettre en valeur</div><ul>${A.keep.map(k=>`<li><strong>${esc(k.name)}</strong> : ${esc(k.txt)}</li>`).join('')}</ul>`:''}
+  ${colorHTML(S.color, S.sex)}
   ${A.style.length?`<div class="cat">Style personnalisé</div><div class="cols2">${A.style.map(([t,x])=>`<div class="advice"><h4>${esc(t)}</h4><p>${esc(x)}</p></div>`).join('')}</div>`:''}
   <div class="cat">Routine de peau</div>
   <div class="cols2">${[...A.skin.base, ...A.skin.add].map(([t,x])=>`<div class="advice"><h4>${esc(t)}</h4><p>${x}</p></div>`).join('')}</div>
@@ -1443,6 +1718,7 @@ function renderReport(){
     </tbody></table>`;
   const th = $('#thumbs');
   for(const v of [S.fv, S.pv]) if(v.img && v.cv.width && Object.keys(v.pts).length){ const c=document.createElement('canvas'); th.appendChild(c); snapshot(v, c); }
+  $$('#reportBox [data-cov]').forEach(sel => sel.onchange = () => { S.colorOv[sel.dataset.cov] = sel.value || undefined; renderReport(); });
   $('#exportJson').onclick = exportJson;
   $('#importJson').onclick = () => $('#importFile').click();
   $('#importFile').onchange = e => importJson(e.target.files[0]);
@@ -1452,7 +1728,7 @@ function snapshot(v, out){
   out.getContext('2d').drawImage(v.cv, 0, 0, out.width, out.height);
 }
 function exportJson(){
-  const data = { app:'Proportio', version:1, sex:S.sex, date:new Date().toISOString(),
+  const data = { app:'Proportio', version:1, sex:S.sex, colorOv:S.colorOv, date:new Date().toISOString(),
     front:{ pts:S.fv.pts, irisPx:S.irisPx, w:S.fv.img&&S.fv.img.width, h:S.fv.img&&S.fv.img.height },
     profile:{ pts:S.pv.pts, w:S.pv.img&&S.pv.img.width, h:S.pv.img&&S.pv.img.height },
     results:{ front:S.frontRes&&S.frontRes.metrics.map(m=>({id:m.id,value:m.value,score:m.score})), profile:S.profRes&&S.profRes.metrics.map(m=>({id:m.id,value:m.value,score:m.score})) } };
@@ -1464,6 +1740,7 @@ async function importJson(file){
   if(!file) return;
   try{
     const d = JSON.parse(await file.text());
+    if(d.colorOv) S.colorOv = d.colorOv;
     if(d.sex) setSex(d.sex);
     if(d.front && S.fv.img && d.front.pts){ S.fv.pts = d.front.pts; S.fv.flags = {}; S.irisPx = d.front.irisPx; updateFront(); S.fv.draw(); }
     if(d.profile && S.pv.img && d.profile.pts){ S.pv.pts = d.profile.pts; updateProfile(); S.pv.draw(); }
@@ -1485,6 +1762,8 @@ $('#knowBox').innerHTML = `
   <p>L'homogénéité du teint et de la couleur influence fortement la perception de l'âge et de la santé (Fink et al., 2006). Ce facteur se travaille souvent plus facilement que la structure osseuse. Les indicateurs de peau de l'outil sont photométriques et relatifs : utilisez-les pour suivre une évolution dans les mêmes conditions de lumière.</p>
   <h3>5. Le nombre d'or : un mythe tenace</h3>
   <p>Le « masque de Marquardt » et le nombre d'or (1,618) n'ont pas de validation solide : les visages jugés beaux ne s'y conforment pas mieux que les autres (Holland, 2008 ; Kiekens et al., 2008). L'outil ne l'utilise que là où il coïncide avec des normes mesurées (rapport bouche / nez, rapport des lèvres).</p>
+  <h3>6. Colorimétrie</h3>
+  <p>La colorimétrie saisonnière vient du stylisme (Johannes Itten, puis <em>Color Me Beautiful</em>). Elle classe les colorations naturelles selon trois axes : la <strong>température</strong> (sous-ton chaud ou froid), la <strong>valeur</strong> (clair ou profond) et la <strong>chroma</strong> (doux ou lumineux). Elle en tire 12 saisons. Son fondement scientifique est limité, mais deux principes sont solides. Des couleurs proches de votre propre contraste paraissent harmonieuses. Et une couleur portée près du visage se reflète sur la peau : elle peut accentuer ou estomper les rougeurs et les cernes. L'outil lit la peau, les yeux et les cheveux sur la photo et corrige la balance des blancs grâce au blanc de l'œil. La lumière reste la première source d'erreur : vérifiez et corrigez les couleurs détectées.</p>
   <h3>Bien prendre ses photos</h3>
   <ul>
     <li><strong>Distance :</strong> 1,5 m au minimum, en zoomant. Un selfie pris à 30 cm grossit le nez d'environ 30 % (Ward et al., 2018).</li>
