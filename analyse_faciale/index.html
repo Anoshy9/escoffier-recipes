@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proportio — Analyse faciale</title>
+<meta name="description" content="Analyse faciale esthétique autonome : proportions, symétrie, profil et peau, calculées localement dans le navigateur.">
+<style>
+:root{
+  --bg:#f6f4f0; --panel:#ffffff; --ink:#1d1c1a; --muted:#6b675f; --line:#e3ded5;
+  --accent:#8a5a3b; --accent-2:#2f6f73; --good:#2e7d4f; --mid:#b7862b; --bad:#b4483c;
+  --zone:rgba(46,125,79,.16); --track:#ece7de; --shadow:0 1px 2px rgba(0,0,0,.05),0 6px 24px rgba(0,0,0,.05);
+  --serif: "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131211; --panel:#1c1b19; --ink:#ece8e1; --muted:#a39d92; --line:#2e2c28;
+    --accent:#d39a74; --accent-2:#6fb7bb; --good:#5cbf86; --mid:#d9ad52; --bad:#e07b6e;
+    --zone:rgba(92,191,134,.18); --track:#2a2825; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131211; --panel:#1c1b19; --ink:#ece8e1; --muted:#a39d92; --line:#2e2c28;
+  --accent:#d39a74; --accent-2:#6fb7bb; --good:#5cbf86; --mid:#d9ad52; --bad:#e07b6e;
+  --zone:rgba(92,191,134,.18); --track:#2a2825; --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--sans)}
+a{color:var(--accent-2)}
+header{padding:28px 16px 12px;max-width:1240px;margin:0 auto}
+h1{font:600 30px/1.1 var(--serif);margin:0;letter-spacing:-.01em}
+h1 small{font:500 13px var(--sans);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:6px}
+h2{font:600 22px/1.2 var(--serif);margin:0 0 12px}
+h3{font:600 17px/1.25 var(--serif);margin:0 0 6px}
+.lede{color:var(--muted);max-width:760px;margin:8px 0 0}
+main{max-width:1240px;margin:0 auto;padding:0 16px 60px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:18px 0 18px;overflow-x:auto}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;font:600 14px var(--sans);color:var(--muted);cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-color:var(--accent)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow)}
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+button,.btn{font:600 13px var(--sans);border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:8px 12px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+button:hover,.btn:hover{border-color:var(--muted)}
+button.primary,.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;border-radius:0;background:transparent}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+input[type=file]{display:none}
+.drop{border:1.5px dashed var(--line);border-radius:12px;padding:28px 16px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+.stage{position:relative;width:100%;background:var(--track);border-radius:10px;overflow:hidden;display:none}
+.stage.on{display:block}
+canvas.view{display:block;width:100%;touch-action:none;cursor:crosshair}
+.status{font-size:13px;color:var(--muted);min-height:20px;margin-top:8px}
+.status.warn{color:var(--bad)}
+.guide{display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--track);font-size:14px}
+.guide.on{display:block}
+.guide b{color:var(--accent)}
+.toggles{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);margin-top:10px}
+.toggles label{display:inline-flex;gap:5px;align-items:center;cursor:pointer}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.kpi .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kpi .v{font:600 26px/1.15 var(--serif)}
+.kpi .s{font-size:12px;color:var(--muted)}
+.mlist{display:flex;flex-direction:column;gap:8px}
+.m{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.m summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:baseline}
+.m summary::-webkit-details-marker{display:none}
+.m .name{font-weight:600}
+.m .val{font:600 15px var(--sans);font-variant-numeric:tabular-nums;text-align:right}
+.m .sub{grid-column:1 / -1;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:99px;text-transform:uppercase}
+.p-good{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.p-mid{background:color-mix(in srgb,var(--mid) 20%,transparent);color:var(--mid)}
+.p-bad{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.p-info{background:var(--track);color:var(--muted)}
+.range{grid-column:1 / -1;position:relative;height:8px;background:var(--track);border-radius:99px;margin:6px 0 2px}
+.range .z{position:absolute;top:0;bottom:0;background:var(--zone);border-left:2px solid var(--good);border-right:2px solid var(--good)}
+.range .dot{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;background:var(--ink);transform:translate(-50%,-50%);border:2px solid var(--panel)}
+.m .body{font-size:14px;margin-top:8px;color:var(--ink)}
+.m .body p{margin:6px 0}
+.m .body .lv{margin:6px 0 0;padding-left:18px}
+.m .body .lv li{margin:2px 0}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.cat{font:600 12px var(--sans);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 8px}
+.report-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center}
+@media (max-width:640px){.report-head{grid-template-columns:minmax(0,1fr)}}
+.score-ring{width:150px;height:150px}
+.cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding:4px 0 4px 12px;margin:12px 0}
+.know h3{margin-top:18px}
+.know p{max-width:820px}
+.thumbs{display:flex;gap:10px;flex-wrap:wrap}
+.thumbs canvas{width:160px;border-radius:10px;border:1px solid var(--line)}
+table.t{border-collapse:collapse;width:100%;font-size:13px}
+table.t td,table.t th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}
+table.t td.n{text-align:right;font-variant-numeric:tabular-nums}
+.hidden{display:none!important}
+@media print{
+  header .bar,.tabs,.no-print,.drop,.toggles,.guide{display:none!important}
+  body{background:#fff;color:#000}
+  .panel{box-shadow:none;border-color:#ddd}
+  [data-tab]{display:none!important}
+  [data-tab="report"]{display:block!important}
+  .m{break-inside:avoid}
+  details.m > .body{display:block}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1><small>Analyse faciale autonome</small>Proportio</h1>
+  <p class="lede">Analyse des proportions, de la symétrie, du profil et de la peau à partir d'une photo. Tous les calculs sont faits dans votre navigateur. Aucune image n'est envoyée nulle part.</p>
+  <div class="bar">
+    <span class="muted small">Normes de référence :</span>
+    <div class="seg" id="sexSeg" role="group" aria-label="Normes">
+      <button data-sex="F" aria-pressed="true">Femme</button>
+      <button data-sex="M" aria-pressed="false">Homme</button>
+    </div>
+    <span class="muted small" style="margin-left:auto"></span>
+    <button id="themeBtn" title="Changer de thème">◐ Thème</button>
+  </div>
+</header>
+
+<main>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-go="front" aria-selected="true">1 · Face</button>
+    <button class="tab" role="tab" data-go="profile" aria-selected="false">2 · Profil</button>
+    <button class="tab" role="tab" data-go="report" aria-selected="false">3 · Rapport</button>
+    <button class="tab" role="tab" data-go="know" aria-selected="false">Le savoir</button>
+  </nav>
+
+  <!-- ============ FACE ============ -->
+  <section data-tab="front">
+    <div class="grid">
+      <div class="panel">
+        <div class="drop" id="frontDrop">
+          <strong>Déposez une photo de face</strong><br>
+          <span class="small">ou cliquez pour choisir un fichier · visage neutre, bouche fermée, cheveux dégagés, photo prise à 1,5 m ou plus</span>
+        </div>
+        <input type="file" id="frontFile" accept="image/*">
+        <div class="stage" id="frontStage"><canvas class="view" id="frontCanvas"></canvas></div>
+        <div class="bar no-print" id="frontTools" hidden>
+          <button class="primary" id="frontAuto">Détection automatique</button>
+          <button id="frontManual">Placement manuel guidé</button>
+          <button id="frontZoom">Vue entière</button>
+          <button id="frontNew">Autre photo</button>
+          <button id="frontCam" class="hidden">Caméra</button>
+        </div>
+        <div class="toggles" id="frontToggles" hidden>
+          <label><input type="checkbox" data-ov="points" checked> Points</label>
+          <label><input type="checkbox" data-ov="labels"> Étiquettes</label>
+          <label><input type="checkbox" data-ov="thirds" checked> Tiers</label>
+          <label><input type="checkbox" data-ov="fifths"> Cinquièmes</label>
+          <label><input type="checkbox" data-ov="midline" checked> Ligne médiane</label>
+          <label><input type="checkbox" data-ov="eyes" checked> Axes des yeux</label>
+          <label><input type="checkbox" data-ov="jaw"> Mâchoire</label>
+          <label><input type="checkbox" data-ov="skin"> Zones de peau</label>
+        </div>
+        <div class="guide" id="frontGuide"></div>
+        <div class="status" id="frontStatus"></div>
+        <video id="camVideo" class="hidden" playsinline muted style="width:100%;border-radius:10px;margin-top:10px"></video>
+        <div class="bar hidden" id="camBar"><button class="primary" id="camShot">Prendre la photo</button><button id="camStop">Annuler</button></div>
+      </div>
+      <div class="panel">
+        <h2>Mesures de face</h2>
+        <div id="frontSummary" class="muted">Chargez une photo pour commencer. Glissez les points pour les corriger ; les mesures se mettent à jour en direct. Les points orange sont estimés et à vérifier.</div>
+        <div id="frontMetrics" class="mlist"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PROFIL ============ -->
+  <section data-tab="profile" hidden>
+    <div class="grid">
+      <div class="panel">
+        <div class="drop" id="profDrop">
+          <strong>Déposez une photo de profil (optionnel)</strong><br>
+          <span class="small">profil strict à 90°, regard à l'horizontale, oreille visible, cou dégagé</span>
+        </div>
+        <input type="file" id="profFile" accept="image/*">
+        <div class="stage" id="profStage"><canvas class="view" id="profCanvas"></canvas></div>
+        <div class="bar no-print" id="profTools" hidden>
+          <button class="primary" id="profManual">Placer les points (guidé)</button>
+          <button id="profZoom">Recadrer sur les points</button>
+          <button id="profNew">Autre photo</button>
+        </div>
+        <div class="toggles" id="profToggles" hidden>
+          <label><input type="checkbox" data-pov="labels" checked> Étiquettes</label>
+          <label><input type="checkbox" data-pov="angles" checked> Angles</label>
+          <label><input type="checkbox" data-pov="eline" checked> Ligne E</label>
+          <label><input type="checkbox" data-pov="fh" checked> Plan de Francfort</label>
+        </div>
+        <div class="guide" id="profGuide"></div>
+        <div class="status" id="profStatus"></div>
+      </div>
+      <div class="panel">
+        <h2>Mesures de profil</h2>
+        <div id="profSummary" class="muted">Le profil se mesure à la main : 17 points à cliquer dans l'ordre, puis vous pouvez les ajuster. Une loupe apparaît pendant le déplacement.</div>
+        <div id="profMetrics" class="mlist"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RAPPORT ============ -->
+  <section data-tab="report" hidden>
+    <div class="panel" id="reportBox">
+      <p class="muted">Le rapport apparaît après l'analyse de face (et de profil si vous l'avez faite).</p>
+    </div>
+  </section>
+
+  <!-- ============ SAVOIR ============ -->
+  <section data-tab="know" hidden>
+    <div class="panel know" id="knowBox"></div>
+  </section>
+</main>
+
+<script type="module">
+/* =====================================================================
+   Proportio — analyse faciale autonome
+   Détection : MediaPipe Face Landmarker (478 points), chargé depuis CDN.
+   Sans connexion : placement manuel guidé (face et profil).
+   ===================================================================== */
+
+const MP_VER = '0.10.14';
+const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}`;
+const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+const IRIS_MM = 11.7;             // diamètre moyen de l'iris adulte
+const NME_MM = {F:112, M:121};    // hauteur nasion–menton moyenne (Farkas)
+const MAX_SIDE = 1600;
+
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const S = { sex:'F', front:null, profile:null, frontRes:null, profRes:null };
+
+/* ------------------------------ géométrie ------------------------------ */
+const G = {
+  sub:(a,b)=>({x:a.x-b.x,y:a.y-b.y}), add:(a,b)=>({x:a.x+b.x,y:a.y+b.y}),
+  mul:(a,k)=>({x:a.x*k,y:a.y*k}), mid:(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2}),
+  len:a=>Math.hypot(a.x,a.y), dist:(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),
+  dot:(a,b)=>a.x*b.x+a.y*b.y, cross:(a,b)=>a.x*b.y-a.y*b.x,
+  rot:(p,c,t)=>{const s=Math.sin(t),k=Math.cos(t),dx=p.x-c.x,dy=p.y-c.y;return{x:c.x+dx*k-dy*s,y:c.y+dx*s+dy*k}},
+  // angle au sommet b entre ba et bc, en degrés
+  angle:(a,b,c)=>{const u=G.sub(a,b),v=G.sub(c,b);return Math.acos(Math.max(-1,Math.min(1,G.dot(u,v)/(G.len(u)*G.len(v)))))*180/Math.PI},
+  lineX:(p1,p2,q1,q2)=>{const r=G.sub(p2,p1),s=G.sub(q2,q1),d=G.cross(r,s);if(Math.abs(d)<1e-9)return null;const t=G.cross(G.sub(q1,p1),s)/d;return G.add(p1,G.mul(r,t))},
+};
+const deg = r => r*180/Math.PI;
+
+/* ------------------------------ repères ------------------------------ */
+// Côtés : R = côté droit du sujet = gauche de l'image (photo non inversée).
+const FRONT_DEFS = [
+  ['tr','Trichion','naissance des cheveux, au centre du front'],
+  ['g','Glabelle','point le plus saillant entre les sourcils'],
+  ['n','Nasion','creux à la racine du nez, entre les yeux'],
+  ['prn','Pointe du nez','point le plus avancé de la pointe'],
+  ['sn','Sous-nasal','jonction entre la base du nez et la lèvre supérieure'],
+  ['ls','Lèvre supérieure','bord supérieur du vermillon, au centre'],
+  ['sto','Stomion','jonction des deux lèvres, au centre'],
+  ['li','Lèvre inférieure','bord inférieur du vermillon, au centre'],
+  ['me','Menton','point le plus bas du menton'],
+  ['puR','Pupille (gauche image)','centre de l\'iris'],
+  ['puL','Pupille (droite image)','centre de l\'iris'],
+  ['exR','Coin externe œil (gauche image)','canthus externe'],
+  ['enR','Coin interne œil (gauche image)','canthus interne'],
+  ['enL','Coin interne œil (droite image)','canthus interne'],
+  ['exL','Coin externe œil (droite image)','canthus externe'],
+  ['ulR','Paupière sup. (gauche image)','point le plus haut du bord de la paupière'],
+  ['llR','Paupière inf. (gauche image)','point le plus bas du bord de la paupière'],
+  ['ulL','Paupière sup. (droite image)','point le plus haut du bord de la paupière'],
+  ['llL','Paupière inf. (droite image)','point le plus bas du bord de la paupière'],
+  ['bhR','Tête du sourcil (gauche image)','début du sourcil, côté nez'],
+  ['bpR','Pic du sourcil (gauche image)','point le plus haut du sourcil'],
+  ['btR','Queue du sourcil (gauche image)','extrémité externe'],
+  ['bhL','Tête du sourcil (droite image)','début du sourcil, côté nez'],
+  ['bpL','Pic du sourcil (droite image)','point le plus haut du sourcil'],
+  ['btL','Queue du sourcil (droite image)','extrémité externe'],
+  ['alR','Aile du nez (gauche image)','point le plus large de la narine'],
+  ['alL','Aile du nez (droite image)','point le plus large de la narine'],
+  ['chR','Commissure (gauche image)','coin de la bouche'],
+  ['chL','Commissure (droite image)','coin de la bouche'],
+  ['ftR','Tempe (gauche image)','bord du front à hauteur des sourcils'],
+  ['ftL','Tempe (droite image)','bord du front à hauteur des sourcils'],
+  ['zyR','Pommette (gauche image)','point le plus large du visage (zygion)'],
+  ['zyL','Pommette (droite image)','point le plus large du visage (zygion)'],
+  ['goR','Angle de mâchoire (gauche image)','gonion, là où la mâchoire tourne'],
+  ['goL','Angle de mâchoire (droite image)','gonion, là où la mâchoire tourne'],
+];
+const PAIRS = ['pu','ex','en','ul','ll','bh','bp','bt','al','ch','ft','zy','go'];
+const MIDLINE = ['g','n','prn','sn','ls','sto','li','me'];
+
+const PROF_DEFS = [
+  ['po','Tragus','haut du tragus (petit relief devant le conduit de l\'oreille)'],
+  ['or','Orbitale','point le plus bas du rebord osseux sous l\'œil'],
+  ['g','Glabelle','point le plus avancé du front entre les sourcils'],
+  ['n','Nasion','creux le plus profond à la racine du nez'],
+  ['prn','Pointe du nez','point le plus avancé du nez'],
+  ['cm','Columelle','point le plus avancé du dessous du nez, entre les narines'],
+  ['ac','Sillon alaire','point où l\'aile du nez rejoint la joue'],
+  ['sn','Sous-nasal','jonction entre la columelle et la lèvre supérieure'],
+  ['ls','Lèvre supérieure','point le plus avancé de la lèvre supérieure'],
+  ['sto','Stomion','jonction des lèvres'],
+  ['li','Lèvre inférieure','point le plus avancé de la lèvre inférieure'],
+  ['pog','Pogonion','point le plus avancé du menton'],
+  ['me','Menton','point le plus bas du menton'],
+  ['c','Point cervical','angle entre le dessous du menton et le cou'],
+  ['nk','Cou','un point plus bas sur l\'avant du cou'],
+  ['ra','Branche montante','bord arrière de la mâchoire, sous le lobe de l\'oreille'],
+  ['go','Gonion','angle de la mâchoire'],
+];
+
+// Indices MediaPipe Face Mesh (478 points avec iris)
+const MP = {
+  g:[9], n:[168], prn:[1], sn:[2], ls:[0], li:[17], me:[152], sto:[13,14],
+  puR:[468], puL:[473], exR:[33], enR:[133], enL:[362], exL:[263],
+  ulR:[159], llR:[145], ulL:[386], llL:[374],
+  bhR:[107,55], bpR:[105], btR:[70,46], bhL:[336,285], bpL:[334], btL:[300,276],
+  chR:[61], chL:[291], ftR:[21], ftL:[251], goR:[172], goL:[397],
+};
+const MP_ALAR = {R:[64,48,129,98,102], L:[294,278,358,327,331]};
+const MP_ZY = {R:[234,93,127], L:[454,323,356]};
+
+/* ------------------------------ normes ------------------------------ */
+// [bas, haut] de la zone idéale, tolérance (écart qui divise le score par 2), poids.
+function N(F, M, tol, w=1){ return {F, M, tol, w}; }
+const NORMS = {
+  thirdU: N([.31,.355],[.31,.355], .03, .6),
+  thirdM: N([.31,.355],[.31,.355], .03, 1),
+  thirdL: N([.31,.355],[.32,.365], .03, 1),
+  lowerRatio: N([.30,.355],[.30,.355], .03, .8),
+  chinPhil: N([1.8,2.25],[2.0,2.5], .35, .8),
+  canthal: N([4,9],[2,7], 3, 1.2),
+  esr: N([.45,.47],[.45,.47], .02, 1.2),
+  lengthRatio: N([.35,.37],[.35,.37], .02, .8),
+  icEye: N([.95,1.1],[.95,1.1], .15, .8),
+  eyeAspect: N([.29,.37],[.25,.33], .05, .6),
+  midface: N([.95,1.1],[.95,1.1], .1, 1),
+  fwhr: N([1.75,1.95],[1.85,2.05], .15, .5),
+  noseIc: N([.95,1.1],[1.0,1.15], .12, .8),
+  mouthNose: N([1.45,1.65],[1.45,1.65], .12, .8),
+  lips: N([1.3,2.0],[1.4,2.0], .3, .6),
+  jawCheek: N([.70,.80],[.80,.90], .05, 1),
+  facialIndex: N([.84,.92],[.86,.94], .05, .5),
+  browTilt: N([2,10],[-2,5], 4, .4),
+  browHeight: N([.45,.70],[.30,.50], .12, .4),
+  symmetry: N([0,1.5],[0,1.5], 2, 1.5),
+  // profil
+  nasofrontal: N([115,135],[115,135], 8, 1),
+  nasolabial: N([95,110],[90,105], 7, 1),
+  goode: N([.55,.60],[.55,.60], .05, .7),
+  convexity: N([163,173],[163,173], 5, 1.2),
+  eUpper: N([-6,-2],[-6,-2], 2, .8),
+  eLower: N([-4,0],[-4,0], 2, .8),
+  mentocervical: N([80,95],[80,95], 6, .8),
+  cervicomental: N([105,120],[105,120], 8, .8),
+  gonial: N([120,130],[115,125], 6, .8),
+  meridian: N([-5,0],[-2,2], 3, 1),
+};
+
+function scoreOf(v, lo, hi, tol){
+  if (v>=lo && v<=hi) return 10;
+  const d = v<lo ? lo-v : v-hi;
+  return 10*Math.pow(.5, (d/tol)**2);
+}
+function verdict(s){
+  if (s==null) return ['Info','p-info'];
+  if (s>=8.5) return ['Idéal','p-good'];
+  if (s>=6) return ['Proche','p-good'];
+  if (s>=3.5) return ['Écart modéré','p-mid'];
+  return ['Écart marqué','p-bad'];
+}
+
+/* ------------------------------ savoir par mesure ------------------------------ */
+const K = {
+  thirdU:{cat:'Proportions verticales', name:'Tiers supérieur', unit:'%',
+    desc:'Du trichion (naissance des cheveux) à la glabelle. Le canon néoclassique divise le visage en trois tiers égaux. Le tiers supérieur dépend de la ligne des cheveux : c\'est la mesure la moins fiable, et la plus facile à modifier visuellement.',
+    lo:'Front court : il peut raccourcir le visage et le faire paraître plus large.', hi:'Front haut : il allonge le visage. Une ligne des cheveux qui recule l\'accentue.',
+    lev:['Coiffure : une frange ou du volume sur le dessus masque ou compense le tiers supérieur','Greffe capillaire ou abaissement de la ligne frontale (front très haut)','Maquillage : un contouring à la racine des cheveux raccourcit visuellement le front']},
+  thirdM:{cat:'Proportions verticales', name:'Tiers moyen', unit:'%',
+    desc:'De la glabelle au sous-nasal : essentiellement la longueur du nez. Un tiers moyen proportionné est l\'un des piliers d\'un visage perçu comme harmonieux.',
+    lo:'Tiers moyen court : nez court, visage d\'aspect juvénile.', hi:'Tiers moyen long : nez long, il peut « tirer » le visage vers le bas.',
+    lev:['Maquillage : un contouring de la pointe du nez la raccourcit visuellement','Rhinoplastie (raccourcissement, rotation de la pointe), à discuter avec un chirurgien','Position des sourcils : des sourcils plus hauts allongent visuellement le tiers moyen']},
+  thirdL:{cat:'Proportions verticales', name:'Tiers inférieur', unit:'%',
+    desc:'Du sous-nasal au menton. Chez l\'homme, un tiers inférieur légèrement plus long est associé à une apparence plus masculine. Un tiers inférieur court donne un visage « compressé », souvent lié à un menton peu développé ou à une supraclusion.',
+    lo:'Tiers inférieur court : menton peu projeté ou hauteur dentaire réduite.', hi:'Tiers inférieur long : il peut signaler un excès vertical du maxillaire ou un menton haut.',
+    lev:['Barbe (homme) : elle allonge ou raccourcit visuellement le menton selon la coupe','Acide hyaluronique au menton (allongement léger, réversible)','Génioplastie, implant de menton, orthodontie ou chirurgie orthognathique selon la cause']},
+  lowerRatio:{cat:'Proportions verticales', name:'Lèvre sup. / tiers inférieur', unit:'%',
+    desc:'Distance sous-nasal → stomion rapportée au tiers inférieur. L\'idéal classique est ⅓ pour la lèvre supérieure et ⅔ pour la lèvre inférieure et le menton.',
+    lo:'Lèvre supérieure courte par rapport au menton : souvent harmonieux si le menton est fort.', hi:'Philtrum long : la lèvre supérieure couvre les dents, ce qui peut donner un aspect plus âgé.',
+    lev:['Lip lift (raccourcissement chirurgical du philtrum)','Acide hyaluronique dans le vermillon : ajoute de la hauteur visible à la lèvre','Allonger le menton (barbe, filler, génioplastie) rééquilibre le rapport']},
+  chinPhil:{cat:'Proportions verticales', name:'Menton / philtrum', unit:'×',
+    desc:'Hauteur du menton (lèvre inférieure → menton) divisée par la longueur du philtrum (sous-nasal → lèvre supérieure). Un rapport d\'environ 2 est jugé équilibré, un peu plus chez l\'homme.',
+    lo:'Menton court par rapport au philtrum : il peut donner un profil fuyant.', hi:'Menton long : il donne une impression de force, parfois de lourdeur.',
+    lev:['Barbe taillée pour ajouter ou masquer de la hauteur au menton','Filler ou implant de menton','Lip lift si c\'est le philtrum qui est long']},
+  canthal:{cat:'Yeux', name:'Inclinaison des yeux (canthal tilt)', unit:'°',
+    desc:'Angle entre le coin interne et le coin externe de l\'œil. Une inclinaison positive (coin externe plus haut) est associée à un regard perçu comme alerte et jeune. Une inclinaison négative peut donner un air fatigué ou triste.',
+    lo:'Inclinaison faible ou négative : regard tombant.', hi:'Inclinaison très marquée : regard « en amande » prononcé, parfois perçu comme artificiel.',
+    lev:['Maquillage : un eye-liner étiré vers le haut, de l\'ombre sur le coin externe','Lift des sourcils (toxine botulique sur la queue du sourcil, ou chirurgie) qui remonte la zone temporale','Canthoplastie : chirurgie spécialisée, avec des risques réels']},
+  esr:{cat:'Yeux', name:'Espacement des yeux (ESR)', unit:'%',
+    desc:'Distance interpupillaire divisée par la largeur bizygomatique. Pallett, Link et Lee (2010) montrent une préférence nette autour de 46 %. C\'est l\'un des rares « ratios d\'or » validés expérimentalement.',
+    lo:'Yeux proches par rapport à la largeur du visage.', hi:'Yeux espacés par rapport à la largeur du visage.',
+    lev:['Maquillage : assombrir le coin interne rapproche les yeux, éclaircir le coin interne les écarte','Sourcils : l\'espacement des têtes de sourcils modifie la perception','Coiffure : du volume latéral change la largeur perçue du visage']},
+  lengthRatio:{cat:'Yeux', name:'Ratio de longueur (yeux–bouche)', unit:'%',
+    desc:'Distance verticale entre les pupilles et la bouche, divisée par la hauteur du visage (cheveux → menton). Pallett et al. (2010) trouvent un optimum vers 36 %. La mesure dépend du trichion.',
+    lo:'Yeux et bouche rapprochés : visage d\'aspect compact.', hi:'Grand écart yeux–bouche : visage d\'aspect allongé.',
+    lev:['La coiffure (frange, volume) change la hauteur perçue du visage, donc ce ratio','La barbe ou la moustache modifie la hauteur perçue du bas du visage']},
+  icEye:{cat:'Yeux', name:'Intercanthal / largeur d\'œil', unit:'×',
+    desc:'Règle des cinquièmes : la distance entre les coins internes des yeux devrait égaler la largeur d\'un œil.',
+    lo:'Distance intercanthale étroite.', hi:'Distance intercanthale large (le télécanthus peut aussi venir de la morphologie de la racine du nez).',
+    lev:['Maquillage des coins internes','Épilation ou comblement de la tête des sourcils','Rhinoplastie de la racine du nez : elle modifie la perception de l\'écart']},
+  eyeAspect:{cat:'Yeux', name:'Ouverture de l\'œil (hauteur / largeur)', unit:'×',
+    desc:'Rapport entre la hauteur de la fente palpébrale et sa largeur. Des yeux plus étroits et en amande (« hunter eyes ») sont souvent perçus comme plus masculins. Des yeux plus ouverts sont perçus comme plus féminins et juvéniles.',
+    lo:'Fente palpébrale étroite : il peut s\'agir d\'une paupière lourde ou d\'une ptose.', hi:'Œil très ouvert ou rond (vérifiez l\'expression : un regard écarquillé fausse la mesure).',
+    lev:['Sommeil et gestion des œdèmes','Maquillage : un liner fin sur la ligne des cils change la forme perçue','Blépharoplastie ou correction de ptose en cas d\'excès cutané ou de paupière tombante (avis médical)']},
+  midface:{cat:'Proportions horizontales', name:'Ratio du milieu du visage', unit:'×',
+    desc:'Distance interpupillaire divisée par la hauteur entre les pupilles et la lèvre supérieure. Un milieu du visage compact (ratio proche de 1) est associé à un aspect juvénile et harmonieux. Un milieu du visage long donne un aspect étiré.',
+    lo:'Milieu du visage long par rapport à l\'écart des yeux.', hi:'Milieu du visage très court et compact.',
+    lev:['Levier limité : la structure osseuse domine','Moustache ou barbe : elle change la hauteur perçue','Le traitement d\'une exposition gingivale excessive (orthodontie, chirurgie) peut aider']},
+  fwhr:{cat:'Proportions horizontales', name:'Largeur / hauteur du visage (FWHR)', unit:'×',
+    desc:'Largeur bizygomatique divisée par la hauteur entre les paupières supérieures et la lèvre supérieure (Carré et McCormick, 2008). Un FWHR élevé est associé à une perception de dominance, surtout chez l\'homme. La valeur dépend beaucoup de la position des points de pommette.',
+    lo:'Visage étroit et haut : perçu comme doux ou élancé.', hi:'Visage large et court : perçu comme robuste ou dominant.',
+    lev:['Le taux de masse grasse change la largeur apparente et la définition des pommettes','Barbe latérale et coiffure : volume sur les côtés ou sur le dessus','Maquillage : contouring des pommettes']},
+  noseIc:{cat:'Nez & bouche', name:'Largeur du nez / intercanthal', unit:'×',
+    desc:'Canon néoclassique : la largeur des ailes du nez égale la distance entre les coins internes des yeux. Chez l\'homme, un nez un peu plus large est la norme.',
+    lo:'Nez étroit par rapport aux yeux.', hi:'Base du nez large. Attention, un selfie pris de près élargit le nez d\'environ 30 % (Ward et al., 2018).',
+    lev:['Maquillage : contouring des ailes du nez','Alarplastie (réduction des ailes du nez), rhinoplastie','Refaire la photo à plus de 1,5 m avant de conclure']},
+  mouthNose:{cat:'Nez & bouche', name:'Largeur bouche / nez', unit:'×',
+    desc:'La bouche fait en général 1,5 à 1,6 fois la largeur du nez. Les commissures tombent à peu près à l\'aplomb du bord interne de l\'iris.',
+    lo:'Bouche étroite par rapport au nez (ou nez large).', hi:'Bouche large par rapport au nez.',
+    lev:['Maquillage des lèvres : un contour légèrement débordé aux commissures','Ce rapport dépend aussi de la largeur du nez (voir la mesure ci-dessus)']},
+  lips:{cat:'Nez & bouche', name:'Lèvre inf. / lèvre sup.', unit:'×',
+    desc:'Hauteur de la lèvre inférieure divisée par celle de la lèvre supérieure. La règle classique est 1,6:1. Des études de perception (p. ex. Popenko et al., 2017) trouvent des préférences jusqu\'à 2:1.',
+    lo:'Lèvre supérieure relativement pleine, ou lèvre inférieure fine.', hi:'Lèvre supérieure fine par rapport à la lèvre inférieure.',
+    lev:['Acide hyaluronique : il cible la lèvre la plus fine, en respectant la proportion','Lip lift si le philtrum long « enroule » la lèvre supérieure','Maquillage : un contour légèrement au-dessus du bord naturel']},
+  jawCheek:{cat:'Mâchoire & forme', name:'Mâchoire / pommettes', unit:'×',
+    desc:'Largeur bigoniaque divisée par la largeur bizygomatique. C\'est un des marqueurs de dimorphisme sexuel les plus forts : une mâchoire large est perçue comme masculine, un visage en « V » comme féminin. Le gonion est difficile à voir de face : vérifiez les points.',
+    lo:'Mâchoire étroite par rapport aux pommettes (visage en V ou en cœur).', hi:'Mâchoire large par rapport aux pommettes (visage carré).',
+    lev:['Perte de masse grasse : c\'est souvent le levier le plus efficace pour révéler la ligne de mâchoire','Barbe : une coupe carrée l\'élargit, une coupe en pointe l\'affine','Toxine botulique dans le masséter (affine), filler ou implant de mâchoire (élargit)']},
+  facialIndex:{cat:'Mâchoire & forme', name:'Indice facial (hauteur / largeur)', unit:'×',
+    desc:'Hauteur nasion–menton divisée par la largeur bizygomatique (indice morphologique). Moins de 0,85 : visage large (euryprosope). 0,85 à 0,90 : moyen. Plus de 0,90 : long (leptoprosope).',
+    lo:'Visage large et court.', hi:'Visage long et étroit.',
+    lev:['Coiffure : du volume latéral pour un visage long, du volume sur le dessus pour un visage large','Barbe : des côtés courts allongent le visage, des côtés fournis l\'élargissent']},
+  browTilt:{cat:'Sourcils', name:'Inclinaison des sourcils', unit:'°',
+    desc:'Angle entre la tête et la queue du sourcil. Les sourcils féminins sont en général plus arqués et leur queue monte légèrement. Les sourcils masculins sont plus droits et plus bas.',
+    lo:'Queue du sourcil tombante : air triste ou fatigué.', hi:'Sourcil très montant : air surpris ou sévère.',
+    lev:['Épilation ou restructuration (dermographie, microblading)','Toxine botulique pour un « brow lift » chimique de la queue du sourcil','Lifting du front ou des tempes en cas de ptose marquée']},
+  browHeight:{cat:'Sourcils', name:'Hauteur des sourcils', unit:'×',
+    desc:'Distance entre la paupière supérieure et le pic du sourcil, divisée par la largeur de l\'œil. Des sourcils bas et proches des yeux sont perçus comme masculins et intenses. Des sourcils hauts, comme féminins et ouverts.',
+    lo:'Sourcils bas.', hi:'Sourcils hauts.',
+    lev:['Épilation du dessous (remonte) ou du dessus (abaisse) du sourcil','Toxine botulique, lift des sourcils']},
+  symmetry:{cat:'Symétrie', name:'Asymétrie moyenne', unit:'% largeur',
+    desc:'Écart moyen entre les repères d\'un côté et le reflet de ceux de l\'autre côté par rapport à l\'axe médian, en pourcentage de la largeur du visage. Tout visage est légèrement asymétrique. Sous environ 2 %, c\'est rarement perceptible. Une tête légèrement tournée augmente fortement la valeur.',
+    lo:'', hi:'Asymétrie visible, ou photo prise de biais.',
+    lev:['Vérifier d\'abord la photo : tête droite, regard dans l\'objectif, éclairage de face','Habitudes : mastication d\'un seul côté, position de sommeil','Asymétrie osseuse ou dentaire marquée : avis orthodontique ou maxillo-facial']},
+  // profil
+  nasofrontal:{cat:'Profil — nez', name:'Angle nasofrontal', unit:'°',
+    desc:'Angle glabelle–nasion–pointe du nez. Il décrit la transition entre le front et le nez. Idéal : 115° à 135°.',
+    lo:'Angle fermé : racine du nez profonde ou front très projeté.', hi:'Angle ouvert : racine du nez plate, profil « grec ».',
+    lev:['Acide hyaluronique à la racine du nez (augmente la projection)','Rhinoplastie (abaissement ou augmentation de la racine)']},
+  nasolabial:{cat:'Profil — nez', name:'Angle nasolabial', unit:'°',
+    desc:'Angle columelle–sous-nasal–lèvre supérieure. Il reflète la rotation de la pointe du nez. Il est plus ouvert chez la femme (95° à 110°) que chez l\'homme (90° à 105°).',
+    lo:'Pointe du nez tombante, ou lèvre supérieure très projetée.', hi:'Pointe du nez très relevée (« nez retroussé »).',
+    lev:['Toxine botulique du muscle abaisseur du septum (pointe tombante au sourire)','Rhinoplastie de la pointe']},
+  goode:{cat:'Profil — nez', name:'Projection de la pointe (Goode)', unit:'×',
+    desc:'Longueur sillon alaire → pointe divisée par la longueur nasion → pointe. Idéal selon Goode : 0,55 à 0,60.',
+    lo:'Pointe sous-projetée : nez « plat ».', hi:'Pointe sur-projetée : nez « pointu ».',
+    lev:['Rhinoplastie (projection ou déprojection de la pointe)']},
+  convexity:{cat:'Profil — équilibre', name:'Convexité du profil', unit:'°',
+    desc:'Angle glabelle–sous-nasal–pogonion. Un profil légèrement convexe (environ 168°) est la norme. Un angle plus fermé signale un menton en retrait (rétrognathie), un angle proche de 180° ou plus un profil concave (prognathie).',
+    lo:'Profil convexe marqué : menton en retrait.', hi:'Profil droit ou concave : menton ou mâchoire en avant.',
+    lev:['Barbe : ajoute de la projection au menton','Filler ou implant de menton, génioplastie d\'avancée','Orthodontie ou chirurgie orthognathique si l\'occlusion est en cause']},
+  eUpper:{cat:'Profil — lèvres', name:'Lèvre sup. / ligne E', unit:'mm',
+    desc:'Distance entre la lèvre supérieure et la ligne esthétique de Ricketts (pointe du nez → menton). Norme : environ −4 mm (derrière la ligne). Les normes varient fortement selon l\'origine ethnique : des lèvres plus projetées sont normales dans de nombreuses populations.',
+    lo:'Lèvre en retrait : profil « plat », parfois vieilli.', hi:'Lèvre projetée, ou nez et menton peu projetés.',
+    lev:['Filler des lèvres (lèvres en retrait)','Projection du menton ou du nez : elle déplace la ligne E','Orthodontie (biproalvéolie)']},
+  eLower:{cat:'Profil — lèvres', name:'Lèvre inf. / ligne E', unit:'mm',
+    desc:'Distance entre la lèvre inférieure et la ligne E. Norme de Ricketts : environ −2 mm.',
+    lo:'Lèvre inférieure en retrait.', hi:'Lèvre inférieure projetée, souvent à cause d\'un menton en retrait.',
+    lev:['Projection du menton','Orthodontie']},
+  mentocervical:{cat:'Profil — menton & cou', name:'Angle mentocervical', unit:'°',
+    desc:'Angle entre le plan facial (glabelle → pogonion) et la ligne sous-mentonnière (menton → point cervical). Idéal : 80° à 95°.',
+    lo:'Angle fermé : menton très projeté.', hi:'Angle ouvert : menton en retrait ou excès sous-mentonnier.',
+    lev:['Posture : une tête portée en avant ouvre l\'angle','Perte de masse grasse, lipoaspiration ou injection lipolytique sous-mentonnière','Projection du menton']},
+  cervicomental:{cat:'Profil — menton & cou', name:'Angle cervicomental', unit:'°',
+    desc:'Angle au point cervical entre la ligne sous-mentonnière et l\'avant du cou. Une valeur entre 105° et 120° donne une ligne de mâchoire nette et un cou bien défini.',
+    lo:'Angle très fermé : rare, cou très défini.', hi:'Angle ouvert : double menton, ptose ou menton en retrait.',
+    lev:['Posture et prise de vue (tête légèrement en avant, menton vers l\'avant)','Perte de masse grasse','Lipoaspiration, lifting du cou, projection du menton']},
+  gonial:{cat:'Profil — menton & cou', name:'Angle goniaque', unit:'°',
+    desc:'Angle de la mâchoire entre la branche montante et le bord inférieur de la mandibule. Un angle fermé donne une mâchoire carrée et définie (typiquement masculine). Un angle ouvert donne une mâchoire plus douce et oblique.',
+    lo:'Mâchoire très carrée.', hi:'Mâchoire oblique, peu définie.',
+    lev:['Implants d\'angle mandibulaire ou filler','Perte de masse grasse (définition)','Barbe : elle dessine un angle plus net']},
+  meridian:{cat:'Profil — équilibre', name:'Projection du menton (méridien 0)', unit:'mm',
+    desc:'Position du pogonion par rapport à la verticale abaissée du nasion, perpendiculaire au plan de Francfort (méridien de Gonzalez-Ulloa). Chez l\'homme, le menton se situe sur la ligne. Chez la femme, légèrement en arrière.',
+    lo:'Menton en retrait.', hi:'Menton en avant de la ligne.',
+    lev:['Barbe','Filler ou implant de menton, génioplastie','Orthodontie ou chirurgie orthognathique selon l\'occlusion']},
+};
+
+/* ------------------------------ viewer canvas ------------------------------ */
+class Viewer{
+  constructor(canvas, defs, {onChange, drawOverlay}){
+    this.cv = canvas; this.ctx = canvas.getContext('2d');
+    this.defs = defs; this.onChange = onChange; this.drawOverlay = drawOverlay;
+    this.img = null; this.pts = {}; this.flags = {}; this.view = null;
+    this.drag = null; this.guide = null; this.hover = null; this.showPoints = true; this.showLabels = false;
+    canvas.addEventListener('pointerdown', e => this.down(e));
+    canvas.addEventListener('pointermove', e => this.move(e));
+    canvas.addEventListener('pointerup', e => this.up(e));
+    canvas.addEventListener('pointercancel', e => this.up(e));
+    new ResizeObserver(() => this.layout()).observe(canvas.parentElement);
+  }
+  setImage(img){ this.img = img; this.pts = {}; this.flags = {}; this.view = {x:0,y:0,w:img.width,h:img.height}; this.layout(); }
+  setView(v){ const I=this.img; if(!I) return;
+    const x=Math.max(0,v.x), y=Math.max(0,v.y); this.view={x, y, w:Math.min(I.width-x,v.w), h:Math.min(I.height-y,v.h)}; this.layout(); }
+  fitPoints(margin=.35){
+    const P = Object.values(this.pts); if(!P.length) return;
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    for(const p of P){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y);}
+    const w=x1-x0,h=y1-y0,m=Math.max(w,h)*margin;
+    this.setView({x:x0-m,y:y0-m,w:w+2*m,h:h+2*m});
+  }
+  layout(){
+    if(!this.img) return;
+    const box = this.cv.parentElement.getBoundingClientRect();
+    if(!box.width) return; // onglet masqué : on remettra en page à l'affichage
+    const maxH = Math.max(320, window.innerHeight*0.78);
+    const k = Math.min(box.width/this.view.w, maxH/this.view.h);
+    const cssW = Math.round(this.view.w*k), cssH = Math.round(this.view.h*k);
+    const dpr = window.devicePixelRatio||1;
+    this.cv.style.width = cssW+'px'; this.cv.style.height = cssH+'px';
+    this.cv.style.margin = '0 auto';
+    this.cv.width = Math.round(cssW*dpr); this.cv.height = Math.round(cssH*dpr);
+    this.k = k; this.dpr = dpr;
+    this.draw();
+  }
+  toScreen(p){ return {x:(p.x-this.view.x)*this.k, y:(p.y-this.view.y)*this.k}; }
+  toImage(e){ const r=this.cv.getBoundingClientRect(); return {x:(e.clientX-r.left)/this.k+this.view.x, y:(e.clientY-r.top)/this.k+this.view.y}; }
+  nearest(pos, rad=16){
+    let best=null, bd=rad/this.k;
+    for(const [key,p] of Object.entries(this.pts)){ const d=G.dist(p,pos); if(d<bd){bd=d;best=key;} }
+    return best;
+  }
+  down(e){
+    if(!this.img) return;
+    const pos = this.toImage(e);
+    if(this.guide){
+      const key = this.guide.keys[this.guide.i];
+      this.pts[key] = pos; this.flags[key] = false;
+      this.guide.i++;
+      if(this.guide.i >= this.guide.keys.length){ const done=this.guide.done; this.guide=null; done&&done(); }
+      else this.guide.step && this.guide.step();
+      this.changed(); return;
+    }
+    const key = this.nearest(pos, e.pointerType==='touch'?26:16);
+    if(key){ this.drag = {key, off:G.sub(this.pts[key],pos)}; this.cv.setPointerCapture(e.pointerId); e.preventDefault(); }
+  }
+  move(e){
+    if(!this.img) return;
+    const pos = this.toImage(e);
+    if(this.drag){ this.pts[this.drag.key] = G.add(pos,this.drag.off); this.flags[this.drag.key]=false; this.lastPos=this.pts[this.drag.key]; this.changed(true); return; }
+    const h = this.guide ? null : this.nearest(pos);
+    this.cv.style.cursor = this.guide ? 'crosshair' : (h ? 'grab' : 'default');
+    if(h!==this.hover){ this.hover=h; this.draw(); }
+  }
+  up(){ if(this.drag){ this.drag=null; this.changed(); } }
+  changed(live){ this.onChange && this.onChange(live); this.draw(); }
+  draw(){
+    const c=this.ctx, I=this.img; if(!I) return;
+    c.setTransform(this.dpr,0,0,this.dpr,0,0);
+    c.clearRect(0,0,this.cv.width,this.cv.height);
+    c.drawImage(I, this.view.x,this.view.y,this.view.w,this.view.h, 0,0,this.view.w*this.k,this.view.h*this.k);
+    this.drawOverlay && this.drawOverlay(c, p=>this.toScreen(p), this);
+    if(this.showPoints){
+      for(const [key,p] of Object.entries(this.pts)){
+        const s=this.toScreen(p), active = key===this.hover || (this.drag&&this.drag.key===key);
+        c.beginPath(); c.arc(s.x,s.y,active?6:3.6,0,Math.PI*2);
+        c.fillStyle = this.flags[key] ? '#ff9f43' : '#35e0c9'; c.fill();
+        c.lineWidth=1.2; c.strokeStyle='rgba(0,0,0,.65)'; c.stroke();
+        if(this.showLabels || active){
+          const d = this.defs.find(d=>d[0]===key); const t = d ? d[1] : key;
+          c.font='600 11px system-ui,sans-serif'; const w=c.measureText(t).width;
+          c.fillStyle='rgba(0,0,0,.6)'; c.fillRect(s.x+7,s.y-8,w+6,15);
+          c.fillStyle='#fff'; c.fillText(t,s.x+10,s.y+3);
+        }
+      }
+    }
+    if(this.drag) this.drawLoupe(this.pts[this.drag.key]);
+  }
+  drawLoupe(p){
+    const c=this.ctx, R=64, Z=3.2, s=this.toScreen(p);
+    const cw=this.cv.width/this.dpr;
+    const cx = s.x < cw/2 ? cw-R-10 : R+10, cy = R+10;
+    c.save(); c.beginPath(); c.arc(cx,cy,R,0,Math.PI*2); c.clip();
+    const src = R/(this.k*Z);
+    c.drawImage(this.img, p.x-src, p.y-src, src*2, src*2, cx-R, cy-R, R*2, R*2);
+    c.strokeStyle='#35e0c9'; c.lineWidth=1;
+    c.beginPath(); c.moveTo(cx-R,cy); c.lineTo(cx+R,cy); c.moveTo(cx,cy-R); c.lineTo(cx,cy+R); c.stroke();
+    c.restore();
+    c.beginPath(); c.arc(cx,cy,R,0,Math.PI*2); c.lineWidth=2; c.strokeStyle='#fff'; c.stroke();
+  }
+}
+
+/* ------------------------------ chargement d'image ------------------------------ */
+function loadImageFile(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => { URL.revokeObjectURL(url); res(toCanvas(im, im.naturalWidth, im.naturalHeight)); };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Image illisible')); };
+    im.src = url;
+  });
+}
+function toCanvas(src, w, h){
+  const k = Math.min(1, MAX_SIDE/Math.max(w,h));
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(w*k); cv.height = Math.round(h*k);
+  cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+  return cv;
+}
+function wireDrop(drop, input, onFile){
+  drop.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => input.files[0] && onFile(input.files[0]));
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { const f=e.dataTransfer.files[0]; f && onFile(f); });
+}
+
+/* ------------------------------ MediaPipe ------------------------------ */
+let landmarkerP = null;
+function getLandmarker(){
+  if(!landmarkerP){
+    landmarkerP = (async () => {
+      const vision = await import(`${MP_BASE}/vision_bundle.mjs`);
+      const fs = await vision.FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+      const opts = d => ({ baseOptions:{ modelAssetPath:MP_MODEL, delegate:d }, runningMode:'IMAGE', numFaces:1 });
+      try { return await vision.FaceLandmarker.createFromOptions(fs, opts('GPU')); }
+      catch { return await vision.FaceLandmarker.createFromOptions(fs, opts('CPU')); }
+    })();
+    landmarkerP.catch(() => { landmarkerP = null; });
+  }
+  return landmarkerP;
+}
+function mapMediaPipe(lm, W, H){
+  const P = i => ({x:lm[i].x*W, y:lm[i].y*H});
+  const avg = ids => { const ps=ids.map(P); return {x:ps.reduce((s,p)=>s+p.x,0)/ps.length, y:ps.reduce((s,p)=>s+p.y,0)/ps.length}; };
+  const pts = {};
+  for(const [k,ids] of Object.entries(MP)) pts[k] = avg(ids);
+  // Roulis : on cherche les points les plus latéraux dans le repère redressé
+  const roll = Math.atan2(pts.puL.y-pts.puR.y, pts.puL.x-pts.puR.x);
+  const c = G.mid(pts.puR, pts.puL);
+  const lateral = (ids, sgn) => ids.map(P).reduce((b,p) => (G.rot(p,c,-roll).x*sgn > G.rot(b,c,-roll).x*sgn ? p : b));
+  pts.alR = lateral(MP_ALAR.R,-1); pts.alL = lateral(MP_ALAR.L,1);
+  pts.zyR = lateral(MP_ZY.R,-1);  pts.zyL = lateral(MP_ZY.L,1);
+  // Trichion : le maillage s'arrête sous la ligne des cheveux, on extrapole et on signale.
+  const top = P(10), gl = pts.g;
+  pts.tr = G.add(top, G.mul(G.sub(top, gl), .45));
+  // Diamètre de l'iris → échelle mm
+  const irisPx = (G.dist(P(469),P(471)) + G.dist(P(470),P(472)) + G.dist(P(474),P(476)) + G.dist(P(475),P(477)))/4;
+  return { pts, irisPx, flags:{ tr:true, goR:true, goL:true } };
+}
+
+/* ------------------------------ calculs de face ------------------------------ */
+function computeFront(raw, sex, irisPx){
+  const need = FRONT_DEFS.map(d=>d[0]).filter(k=>!raw[k]);
+  if(need.length) return null;
+  // Redressement : ligne interpupillaire horizontale
+  const roll = Math.atan2(raw.puL.y-raw.puR.y, raw.puL.x-raw.puR.x);
+  const C = G.mid(raw.puR, raw.puL);
+  const p = {}; for(const k in raw) p[k] = G.rot(raw[k], C, -roll);
+  const dx = (a,b)=>Math.abs(p[a].x-p[b].x), dy = (a,b)=>Math.abs(p[a].y-p[b].y);
+
+  const ipd = dx('puR','puL');
+  const bizyg = dx('zyR','zyL');
+  const bigon = dx('goR','goL');
+  const eyeWR = G.dist(p.exR,p.enR), eyeWL = G.dist(p.exL,p.enL), eyeW=(eyeWR+eyeWL)/2;
+  const ic = dx('enR','enL');
+  const noseW = dx('alR','alL'), mouthW = dx('chR','chL');
+  const up = p.g.y - p.tr.y, midH = p.sn.y - p.g.y, low = p.me.y - p.sn.y, tot = up+midH+low;
+  const pupY = (p.puR.y+p.puL.y)/2, lidY = (p.ulR.y+p.ulL.y)/2;
+  const mouthY = p.sto.y;
+  const mmPerPx = irisPx ? IRIS_MM/irisPx : 63/ipd;
+
+  const canthR = deg(Math.atan2(p.enR.y-p.exR.y, p.enR.x-p.exR.x)); // extérieur→intérieur, x croissant
+  const canthL = deg(Math.atan2(p.enL.y-p.exL.y, p.exL.x-p.enL.x));
+  const canthal = (canthR+canthL)/2;
+  const browR = deg(Math.atan2(p.bhR.y-p.btR.y, p.bhR.x-p.btR.x));
+  const browL = deg(Math.atan2(p.bhL.y-p.btL.y, p.btL.x-p.bhL.x));
+  const eyeHR = p.llR.y-p.ulR.y, eyeHL = p.llL.y-p.ulL.y;
+  const browHR = p.ulR.y - p.bpR.y, browHL = p.ulL.y - p.bpL.y;
+
+  // Symétrie : axe médian ajusté (x = a*y + b) sur les points médians
+  const ys = MIDLINE.map(k=>p[k].y), xs = MIDLINE.map(k=>p[k].x);
+  const my = ys.reduce((a,b)=>a+b)/ys.length, mx = xs.reduce((a,b)=>a+b)/xs.length;
+  let sxy=0, syy=0; ys.forEach((y,i)=>{ sxy+=(y-my)*(xs[i]-mx); syy+=(y-my)**2; });
+  const a = syy ? sxy/syy : 0, b = mx - a*my;
+  const axisX = y => a*y+b;
+  const reflect = q => { // réflexion par rapport à la droite x = a*y+b
+    const P0 = {x:b, y:0}, d = {x:a, y:1}, L = G.len(d), u = G.mul(d,1/L);
+    const v = G.sub(q,P0), proj = G.mul(u, G.dot(v,u)), perp = G.sub(v, proj);
+    return G.add(P0, G.sub(proj, perp));
+  };
+  const asym = PAIRS.map(k => ({k, d:G.dist(p[k+'R'], reflect(p[k+'L']))/bizyg*100, dy:(p[k+'R'].y-p[k+'L'].y)/bizyg*100}));
+  const asymMean = asym.reduce((s,x)=>s+x.d,0)/asym.length;
+  const midDev = MIDLINE.map(k => (p[k].x - axisX(p[k].y))/bizyg*100);
+  const chinDev = (p.me.x - axisX(p.me.y))/bizyg*100;
+
+  // Pose : lacet estimé par la position de la pointe du nez entre les pommettes
+  const yaw = ((p.prn.x - p.zyR.x)/(p.zyL.x - p.zyR.x) - .5);
+  const warnings = [];
+  if(Math.abs(yaw) > .06) warnings.push(`La tête semble tournée (écart nez/centre ${(yaw*100).toFixed(0)} %). Les mesures de largeur et de symétrie sont faussées : refaites la photo de face.`);
+  if(Math.abs(deg(roll)) > 8) warnings.push(`Tête inclinée de ${deg(roll).toFixed(1)}° (corrigé automatiquement).`);
+
+  const fifths = [dx('zyR','exR'), eyeWR, ic, eyeWL, dx('exL','zyL')];
+  const fMean = fifths.reduce((a,b)=>a+b)/5;
+  const fifthsDev = Math.sqrt(fifths.reduce((s,f)=>s+(f-fMean)**2,0)/5)/fMean*100;
+
+  const V = {
+    thirdU: up/tot, thirdM: midH/tot, thirdL: low/tot,
+    lowerRatio: (p.sto.y-p.sn.y)/low,
+    chinPhil: (p.me.y-p.li.y)/(p.ls.y-p.sn.y),
+    canthal,
+    esr: ipd/bizyg,
+    lengthRatio: (mouthY-pupY)/(p.me.y-p.tr.y),
+    icEye: ic/eyeW,
+    eyeAspect: ((eyeHR/eyeWR)+(eyeHL/eyeWL))/2,
+    midface: ipd/(p.ls.y-pupY),
+    fwhr: bizyg/(p.ls.y-lidY),
+    noseIc: noseW/ic,
+    mouthNose: mouthW/noseW,
+    lips: (p.li.y-p.sto.y)/(p.sto.y-p.ls.y),
+    jawCheek: bigon/bizyg,
+    facialIndex: (p.me.y-p.n.y)/bizyg,
+    browTilt: (browR+browL)/2,
+    browHeight: ((browHR/eyeWR)+(browHL/eyeWL))/2,
+    symmetry: asymMean,
+  };
+  const pct = new Set(['thirdU','thirdM','thirdL','lowerRatio','esr','lengthRatio']);
+  const extra = {
+    canthal:`G ${canthR.toFixed(1)}° · D ${canthL.toFixed(1)}°`,
+    browTilt:`G ${browR.toFixed(1)}° · D ${browL.toFixed(1)}°`,
+    esr:`DIP ≈ ${(ipd*mmPerPx).toFixed(1)} mm · bizygomatique ≈ ${(bizyg*mmPerPx).toFixed(0)} mm`,
+    noseIc:`nez ≈ ${(noseW*mmPerPx).toFixed(1)} mm · intercanthal ≈ ${(ic*mmPerPx).toFixed(1)} mm`,
+    mouthNose:`bouche ≈ ${(mouthW*mmPerPx).toFixed(1)} mm`,
+    symmetry:`Plus forte asymétrie : ${labelPair(asym.slice().sort((x,y)=>y.d-x.d)[0].k)} · menton décalé de ${chinDev.toFixed(1)} %`,
+    icEye:`cinquièmes : ${fifths.map(f=>(f/eyeW).toFixed(2)).join(' · ')} (en largeurs d'œil)`,
+    thirdU:'dépend du trichion (point orange si estimé)', lengthRatio:'dépend du trichion',
+    jawCheek:`bigoniaque ≈ ${(bigon*mmPerPx).toFixed(0)} mm`,
+    facialIndex: V_facialType((p.me.y-p.n.y)/bizyg),
+  };
+  const metrics = Object.keys(V).map(id => makeMetric(id, V[id], sex, {pct:pct.has(id), extra:extra[id]}));
+  metrics.push({id:'fifths', ...K.icEye, cat:'Proportions horizontales', name:'Régularité des cinquièmes', unit:'%', value:fifthsDev, disp:fifthsDev.toFixed(1)+' %', score:null, ideal:null,
+    desc:'Écart-type des cinq cinquièmes horizontaux (pommette–œil–entre-yeux–œil–pommette), en pourcentage de leur moyenne. Mesure informative : les cinquièmes externes dépendent beaucoup de la position des points de pommette.', lev:[], extra:`cinquièmes : ${fifths.map(f=>(f/eyeW).toFixed(2)).join(' · ')}`});
+
+  const shape = faceShape(p, bizyg, bigon);
+  return { metrics, warnings, shape, geom:{roll, C, p, axis:{a,b}, fifths}, asym, mmPerPx, yaw };
+}
+function V_facialType(v){ return v<.85?'euryprosope (visage large)': v<.90?'mésoprosope (moyen)': v<.95?'leptoprosope (long)':'hyperleptoprosope (très long)'; }
+function labelPair(k){ return ({pu:'pupilles',ex:'coins externes des yeux',en:'coins internes des yeux',ul:'paupières sup.',ll:'paupières inf.',bh:'têtes de sourcils',bp:'pics de sourcils',bt:'queues de sourcils',al:'ailes du nez',ch:'commissures',ft:'tempes',zy:'pommettes',go:'angles de mâchoire'})[k]||k; }
+
+function faceShape(p, bizyg, bigon){
+  const L = (p.me.y-p.tr.y)/bizyg, J = bigon/bizyg, F = Math.abs(p.ftL.x-p.ftR.x)/bizyg;
+  let s, why;
+  if(L >= 1.5){ s = J>=.84 ? 'Rectangulaire' : 'Oblong'; }
+  else if(L < 1.3){ s = J>=.84 ? 'Carré' : 'Rond'; }
+  else if(F > J + .1 && J < .76) s = 'Cœur';
+  else if(F < .86 && J < .78) s = 'Diamant';
+  else if(J > F + .04) s = 'Triangle';
+  else s = 'Ovale';
+  why = `longueur/largeur ${L.toFixed(2)} · front ${Math.round(F*100)} % · mâchoire ${Math.round(J*100)} % de la largeur des pommettes`;
+  return {s, why};
+}
+
+function makeMetric(id, v, sex, {pct=false, extra}={}){
+  const n = NORMS[id], k = K[id], [lo,hi] = n[sex];
+  const score = scoreOf(v, lo, hi, n.tol);
+  const f = x => pct ? (x*100).toFixed(1)+' %' : (k.unit==='°' ? x.toFixed(1)+'°' : k.unit==='mm' ? (x>0?'+':'')+x.toFixed(1)+' mm' : k.unit==='% largeur' ? x.toFixed(1)+' %' : x.toFixed(2));
+  const dir = v<lo ? 'lo' : v>hi ? 'hi' : null;
+  return { id, ...k, value:v, disp:f(v), ideal:[lo,hi], idealDisp:`${f(lo)} – ${f(hi)}`, tol:n.tol, w:n.w, score, dir, extra };
+}
+
+/* ------------------------------ calculs de profil ------------------------------ */
+function computeProfile(p, sex){
+  if(PROF_DEFS.some(d=>!p[d[0]])) return null;
+  const dir = Math.sign(p.prn.x - p.po.x) || 1; // +1 : regarde vers la droite
+  const nme = G.dist(p.n, p.me), mm = NME_MM[sex]/nme;
+  const fwdDist = (q, a, b) => { // distance signée de q à la droite ab, positive vers l'avant
+    const v = G.sub(b,a); let nrm = {x:-v.y, y:v.x}; if(nrm.x*dir < 0) nrm = G.mul(nrm,-1);
+    return G.dot(G.sub(q,a), nrm)/G.len(v);
+  };
+  const X = G.lineX(p.g, p.pog, p.me, p.c);
+  const mentocervical = X ? G.angle(p.g, X, p.c) : G.angle(p.g, p.pog, p.c);
+  const fh = G.sub(p.or, p.po), u = G.mul(fh, 1/G.len(fh));
+  const meridian = G.dot(G.sub(p.pog, p.n), u) * mm;
+  const fhTilt = deg(Math.atan2(fh.y, fh.x*dir));
+  const V = {
+    nasofrontal: G.angle(p.g, p.n, p.prn),
+    nasolabial: G.angle(p.cm, p.sn, p.ls),
+    goode: G.dist(p.ac, p.prn)/G.dist(p.n, p.prn),
+    convexity: G.angle(p.g, p.sn, p.pog),
+    eUpper: fwdDist(p.ls, p.prn, p.pog)*mm,
+    eLower: fwdDist(p.li, p.prn, p.pog)*mm,
+    mentocervical,
+    cervicomental: G.angle(p.me, p.c, p.nk),
+    gonial: G.angle(p.ra, p.go, p.me),
+    meridian,
+  };
+  const warnings = [];
+  if(Math.abs(fhTilt) > 10) warnings.push(`Plan de Francfort incliné de ${fhTilt.toFixed(0)}° : la tête est ${fhTilt>0?'baissée':'relevée'}. Les angles cervicaux et la projection du menton en sont affectés.`);
+  const extra = { eUpper:'échelle estimée par la hauteur nasion–menton moyenne', eLower:'échelle estimée', meridian:'distance au méridien, perpendiculaire au plan de Francfort' };
+  const metrics = Object.keys(V).map(id => makeMetric(id, V[id], sex, {extra:extra[id]}));
+  return { metrics, warnings, geom:{dir, X, u}, mm };
+}
+
+/* ------------------------------ peau ------------------------------ */
+function srgb2lab(r,g,b){
+  const f=c=>{c/=255;return c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4)};
+  const R=f(r),Gg=f(g),B=f(b);
+  let X=(R*.4124+Gg*.3576+B*.1805)/.95047, Y=R*.2126+Gg*.7152+B*.0722, Z=(R*.0193+Gg*.1192+B*.9505)/1.08883;
+  const h=t=>t>.008856?Math.cbrt(t):7.787*t+16/116;
+  X=h(X);Y=h(Y);Z=h(Z);
+  return [116*Y-16, 500*(X-Y), 200*(Y-Z)];
+}
+function skinZones(res){
+  const {p, roll, C} = res.geom;
+  const eyeW = (G.dist(p.exR,p.enR)+G.dist(p.exL,p.enL))/2;
+  const back = q => G.rot(q, C, roll);
+  const z = [];
+  for(const s of ['R','L']){
+    const cheek = {x:(p['al'+s].x+p['zy'+s].x)/2, y:p['al'+s].y - (p['al'+s].y-p['ll'+s].y)*.35};
+    z.push({kind:'cheek', c:back(cheek), r:eyeW*.33});
+    z.push({kind:'under', c:back({x:(p['ex'+s].x+p['en'+s].x)/2, y:p['ll'+s].y+eyeW*.2}), r:eyeW*.12});
+  }
+  z.push({kind:'fore', c:back({x:p.g.x, y:p.g.y-eyeW*.75}), r:eyeW*.35});
+  z.push({kind:'nose', c:back(p.prn), r:eyeW*.12});
+  return z;
+}
+function analyzeSkin(img, res){
+  const zones = skinZones(res);
+  const ctx = img.getContext('2d', {willReadFrequently:true});
+  const out = {};
+  for(const z of zones){
+    const r = Math.max(4, Math.round(z.r)), x0 = Math.round(z.c.x-r), y0 = Math.round(z.c.y-r), n = 2*r+1;
+    if(x0<0||y0<0||x0+n>img.width||y0+n>img.height) continue;
+    const d = ctx.getImageData(x0,y0,n,n).data;
+    const L = new Float32Array(n*n), A = new Float32Array(n*n), B = new Float32Array(n*n);
+    for(let i=0;i<n*n;i++){ const [l,a,b]=srgb2lab(d[i*4],d[i*4+1],d[i*4+2]); L[i]=l; A[i]=a; B[i]=b; }
+    // flou boîte (rayon 3) pour séparer teint (basse fréquence) et texture (haute fréquence)
+    const bl = boxBlur(L, n, 3);
+    let cnt=0, sL=0, sA=0, sB=0, hf=0, spec=0; const inside=[];
+    for(let y=0;y<n;y++) for(let x=0;x<n;x++){
+      if((x-r)**2+(y-r)**2 > r*r) continue; const i=y*n+x;
+      cnt++; sL+=L[i]; sA+=A[i]; sB+=B[i]; hf+=(L[i]-bl[i])**2; inside.push(bl[i]);
+      if(L[i]>88 && Math.hypot(A[i],B[i])<12) spec++;
+    }
+    const mL=sL/cnt, lf=Math.sqrt(inside.reduce((s,v)=>s+(v-mL)**2,0)/cnt);
+    (out[z.kind] ||= []).push({L:mL, a:sA/cnt, b:sB/cnt, tex:Math.sqrt(hf/cnt), tone:lf, spec:spec/cnt});
+  }
+  const avg = (k, f) => out[k] ? out[k].reduce((s,x)=>s+x[f],0)/out[k].length : null;
+  if(!out.cheek) return null;
+  const R = {
+    redness: avg('cheek','a') - (avg('fore','a') ?? avg('cheek','a')) , rednessAbs: avg('cheek','a'),
+    texture: (avg('cheek','tex') + (avg('fore','tex')??avg('cheek','tex')))/2,
+    tone: avg('cheek','tone'),
+    dark: out.under ? avg('cheek','L') - avg('under','L') : null,
+    shine: ((avg('fore','spec')??0) + (avg('nose','spec')??0) + avg('cheek','spec'))/3*100,
+    L: avg('cheek','L'),
+  };
+  return {R, zones};
+}
+function boxBlur(src, n, r){
+  const tmp = new Float32Array(n*n), out = new Float32Array(n*n);
+  for(let y=0;y<n;y++) for(let x=0;x<n;x++){ let s=0,c=0; for(let k=-r;k<=r;k++){const xx=x+k; if(xx>=0&&xx<n){s+=src[y*n+xx];c++;}} tmp[y*n+x]=s/c; }
+  for(let y=0;y<n;y++) for(let x=0;x<n;x++){ let s=0,c=0; for(let k=-r;k<=r;k++){const yy=y+k; if(yy>=0&&yy<n){s+=tmp[yy*n+x];c++;}} out[y*n+x]=s/c; }
+  return out;
+}
+function skinMetrics(S){
+  if(!S) return [];
+  const {R} = S;
+  const band = (v, a, b, labels) => v==null ? null : v<a ? labels[0] : v<b ? labels[1] : labels[2];
+  const m = (id,name,v,disp,lvl,desc,lev) => ({id, cat:'Peau (indicatif)', name, value:v, disp, score:null, level:lvl, desc, lev});
+  const lv = ['p-good','p-mid','p-bad'];
+  return [
+    m('redness','Rougeurs des joues', R.redness, `${R.redness>=0?'+':''}${R.redness.toFixed(1)} a*`, band(R.redness,3,7,lv),
+      'Écart de la composante rouge (a*, espace CIELAB) des joues par rapport au front. Un écart marqué peut refléter de la couperose, de la rosacée ou une irritation, ou simplement l\'effort ou le froid.',
+      ['Protection solaire quotidienne','Soins apaisants (niacinamide, acide azélaïque)','Avis dermatologique en cas de rougeurs persistantes (laser vasculaire)']),
+    m('texture','Texture (micro-relief)', R.texture, R.texture.toFixed(2), band(R.texture,1.6,2.6,lv),
+      'Énergie des hautes fréquences de la luminance : pores, grain et petites imperfections. Elle dépend beaucoup de la netteté, du bruit et de la compression de la photo.',
+      ['Exfoliation douce (AHA/BHA)','Rétinoïdes (le soir, progressivement)','Microneedling, peelings ou lasers fractionnés (en cabinet)']),
+    m('tone','Uniformité du teint', R.tone, R.tone.toFixed(2), band(R.tone,2.5,4.5,lv),
+      'Variations de luminosité à grande échelle sur les joues : taches pigmentaires, cicatrices ou irrégularités. Les ombres de l\'éclairage augmentent la valeur.',
+      ['Photoprotection (le premier levier contre les taches)','Vitamine C, niacinamide, acide azélaïque','Lasers pigmentaires ou peelings sur avis médical']),
+    ...(R.dark!=null ? [m('dark','Cernes', R.dark, `${R.dark.toFixed(1)} L*`, band(R.dark,6,12,lv),
+      'Différence de luminosité entre la joue et le dessous de l\'œil. Les cernes combinent pigmentation, transparence vasculaire et creux (vallée des larmes). L\'ombre de l\'arcade augmente la valeur si la lumière vient d\'en haut.',
+      ['Sommeil, hydratation, réduction du sel','Correcteur pêche ou orangé selon la carnation','Acide hyaluronique dans la vallée des larmes (creux), soins dépigmentants']) ] : []),
+    m('shine','Brillance', R.shine, `${R.shine.toFixed(1)} %`, band(R.shine,1.5,5,lv),
+      'Part de pixels spéculaires (très clairs, peu colorés) sur le front, le nez et les joues. Elle reflète le sébum et l\'éclairage.',
+      ['Nettoyant doux, niacinamide','Poudre matifiante avant la photo','Rétinoïdes (régulation du sébum)']),
+  ];
+}
+
+/* ------------------------------ overlays ------------------------------ */
+const OV = { points:true, labels:false, thirds:true, fifths:false, midline:true, eyes:true, jaw:false, skin:false };
+const POV = { labels:true, angles:true, eline:true, fh:true };
+
+function drawFrontOverlay(c, T){
+  const r = S.frontRes; if(!r) return;
+  const {roll, C, p, axis} = r.geom;
+  const back = q => T(G.rot(q, C, roll));
+  const line = (a,b,col,w=1.2,dash) => { const A=back(a),B=back(b); c.beginPath(); c.moveTo(A.x,A.y); c.lineTo(B.x,B.y); c.strokeStyle=col; c.lineWidth=w; c.setLineDash(dash||[]); c.stroke(); c.setLineDash([]); };
+  const x0 = p.zyR.x - (p.zyL.x-p.zyR.x)*.12, x1 = p.zyL.x + (p.zyL.x-p.zyR.x)*.12;
+  if(OV.thirds){
+    for(const k of ['tr','g','sn','me']) line({x:x0,y:p[k].y},{x:x1,y:p[k].y},'rgba(255,214,102,.9)',1.2,[6,4]);
+    line({x:x0,y:p.sto.y},{x:x0+(x1-x0)*.25,y:p.sto.y},'rgba(255,214,102,.6)',1,[3,3]);
+  }
+  if(OV.fifths){
+    const top = p.tr.y, bot = p.me.y;
+    for(const k of ['zyR','exR','enR','enL','exL','zyL']) line({x:p[k].x,y:top},{x:p[k].x,y:bot},'rgba(120,200,255,.8)',1,[4,4]);
+  }
+  if(OV.midline){
+    const y0 = p.tr.y - 10, y1 = p.me.y + 10;
+    line({x:axis.a*y0+axis.b,y:y0},{x:axis.a*y1+axis.b,y:y1},'rgba(255,120,180,.9)',1.2);
+  }
+  if(OV.eyes){
+    line(p.exR,p.enR,'rgba(53,224,201,.95)',1.6); line(p.enL,p.exL,'rgba(53,224,201,.95)',1.6);
+    line({x:p.exR.x-10,y:(p.exR.y+p.enR.y)/2},{x:p.exL.x+10,y:(p.exR.y+p.enR.y)/2},'rgba(255,255,255,.35)',1,[2,4]);
+    line(p.puR,p.puL,'rgba(255,255,255,.55)',1);
+    line(p.btR,p.bhR,'rgba(200,160,255,.85)',1.3); line(p.bhL,p.btL,'rgba(200,160,255,.85)',1.3);
+  }
+  if(OV.jaw){
+    line(p.zyR,p.zyL,'rgba(255,160,90,.9)',1.4); line(p.goR,p.goL,'rgba(255,160,90,.9)',1.4);
+    line(p.goR,p.me,'rgba(255,160,90,.6)',1.2); line(p.goL,p.me,'rgba(255,160,90,.6)',1.2);
+    line(p.ftR,p.ftL,'rgba(255,160,90,.5)',1,[4,4]);
+  }
+  if(OV.skin && S.skin){
+    for(const z of S.skin.zones){ const s=T(z.c); c.beginPath(); c.arc(s.x,s.y,z.r*S.fv.k,0,Math.PI*2); c.strokeStyle='rgba(255,255,255,.85)'; c.setLineDash([3,3]); c.lineWidth=1.2; c.stroke(); c.setLineDash([]); }
+  }
+}
+function drawProfOverlay(c, T, v){
+  const p = v.pts, r = S.profRes;
+  const line = (a,b,col,w=1.3,dash) => { if(!a||!b) return; const A=T(a),B=T(b); c.beginPath(); c.moveTo(A.x,A.y); c.lineTo(B.x,B.y); c.strokeStyle=col; c.lineWidth=w; c.setLineDash(dash||[]); c.stroke(); c.setLineDash([]); };
+  const ext = (a,b,k) => G.add(a, G.mul(G.sub(b,a),k));
+  if(POV.fh && p.po && p.or){ line(ext(p.or,p.po,.3), ext(p.po,p.or,1.6), 'rgba(120,200,255,.8)',1,[5,4]);
+    if(p.n && r){ const u=r.geom.u, perp={x:-u.y,y:u.x}; line(G.add(p.n,G.mul(perp,-G.dist(p.po,p.or)*.4)), G.add(p.n,G.mul(perp,G.dist(p.po,p.or)*1.3)), 'rgba(120,200,255,.6)',1,[2,4]); } }
+  if(POV.eline && p.prn && p.pog) line(ext(p.pog,p.prn,1.15), ext(p.prn,p.pog,1.15), 'rgba(255,120,180,.9)',1.3);
+  if(POV.angles){
+    const col='rgba(255,214,102,.95)';
+    line(p.g,p.n,col); line(p.n,p.prn,col);
+    line(p.cm,p.sn,col); line(p.sn,p.ls,col);
+    line(p.g,p.sn,'rgba(53,224,201,.8)'); line(p.sn,p.pog,'rgba(53,224,201,.8)');
+    line(p.me,p.c,'rgba(255,160,90,.9)'); line(p.c,p.nk,'rgba(255,160,90,.9)');
+    line(p.ra,p.go,'rgba(200,160,255,.9)'); line(p.go,p.me,'rgba(200,160,255,.9)');
+  }
+}
+
+/* ------------------------------ rendu des mesures ------------------------------ */
+function rangeBar(m){
+  if(!m.ideal) return '';
+  const [lo,hi] = m.ideal, t = m.tol;
+  const d0 = Math.min(lo-2.5*t, m.value), d1 = Math.max(hi+2.5*t, m.value), W = d1-d0 || 1;
+  const pos = v => ((v-d0)/W*100).toFixed(2);
+  return `<div class="range" aria-hidden="true"><div class="z" style="left:${pos(lo)}%;width:${(pos(hi)-pos(lo)).toFixed(2)}%"></div><div class="dot" style="left:${pos(m.value)}%"></div></div>`;
+}
+function metricHTML(m, open=false){
+  const [vt, vc] = m.level ? [({'p-good':'Faible','p-mid':'Modéré','p-bad':'Marqué'})[m.level], m.level] : verdict(m.score);
+  const reading = m.dir==='lo' ? m.lo : m.dir==='hi' ? m.hi : (m.score!=null ? 'Dans la zone de référence.' : '');
+  return `<details class="m" ${open?'open':''}>
+    <summary>
+      <span class="name">${esc(m.name)}</span><span class="val">${esc(m.disp)}</span>
+      ${rangeBar(m)}
+      <span class="sub"><span>${m.idealDisp?'Référence '+esc(m.idealDisp):''}</span><span class="pill ${vc}">${vt}${m.score!=null?' · '+m.score.toFixed(1):''}</span></span>
+    </summary>
+    <div class="body">
+      ${reading?`<p><strong>${esc(reading)}</strong></p>`:''}
+      <p>${esc(m.desc)}</p>
+      ${m.extra?`<p class="muted small">${esc(m.extra)}</p>`:''}
+      ${m.lev&&m.lev.length?`<div class="small muted">Leviers possibles :</div><ul class="lv">${m.lev.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>`:''}
+    </div></details>`;
+}
+function groupHTML(metrics){
+  const cats = [...new Set(metrics.map(m=>m.cat))];
+  return cats.map(c => `<div class="cat">${esc(c)}</div>` + metrics.filter(m=>m.cat===c).map(m=>metricHTML(m)).join('')).join('');
+}
+function harmony(metrics){
+  const s = metrics.filter(m=>m.score!=null);
+  const w = s.reduce((a,m)=>a+m.w,0);
+  return w ? s.reduce((a,m)=>a+m.score*m.w,0)/w : null;
+}
+
+/* ------------------------------ état et flux : FACE ------------------------------ */
+S.fv = new Viewer($('#frontCanvas'), FRONT_DEFS, { onChange: live => updateFront(live), drawOverlay: drawFrontOverlay });
+S.pv = new Viewer($('#profCanvas'), PROF_DEFS, { onChange: live => updateProfile(live), drawOverlay: drawProfOverlay });
+S.pv.showLabels = true;
+
+let skinTimer = null;
+function updateFront(live){
+  const v = S.fv;
+  S.frontRes = computeFront(v.pts, S.sex, S.irisPx);
+  const box = $('#frontMetrics'), sum = $('#frontSummary');
+  if(!S.frontRes){ box.innerHTML=''; return; }
+  clearTimeout(skinTimer);
+  const run = () => { S.skin = analyzeSkin(v.img, S.frontRes); renderFrontPanel(); v.draw(); };
+  if(live) skinTimer = setTimeout(run, 250); else run();
+  renderFrontPanel();
+}
+function renderFrontPanel(){
+  const r = S.frontRes; if(!r) return;
+  const all = r.metrics.concat(skinMetrics(S.skin));
+  const h = harmony(r.metrics);
+  $('#frontSummary').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="k">Harmonie (face)</div><div class="v">${h.toFixed(1)}<span class="small muted"> /10</span></div><div class="s">moyenne pondérée des mesures</div></div>
+      <div class="kpi"><div class="k">Forme</div><div class="v" style="font-size:22px">${esc(r.shape.s)}</div><div class="s">${esc(r.shape.why)}</div></div>
+      <div class="kpi"><div class="k">Asymétrie</div><div class="v">${r.metrics.find(m=>m.id==='symmetry').disp}</div><div class="s">de la largeur du visage</div></div>
+    </div>
+    ${r.warnings.map(w=>`<div class="note" style="border-color:var(--bad)">${esc(w)}</div>`).join('')}`;
+  $('#frontMetrics').innerHTML = groupHTML(all);
+  renderReport();
+}
+
+async function onFrontFile(file){
+  try{
+    const img = await loadImageFile(file);
+    startFront(img);
+  }catch(e){ setStatus('#frontStatus', e.message, true); }
+}
+function startFront(img){
+  S.fv.setImage(img); S.irisPx = null; S.frontRes = null; S.skin = null;
+  $('#frontDrop').classList.add('hidden'); $('#frontStage').classList.add('on');
+  S.camBtn && S.camBtn.classList.add('hidden');
+  $('#frontTools').hidden = false; $('#frontToggles').hidden = false;
+  $('#frontMetrics').innerHTML = '';
+  autoDetect();
+}
+async function autoDetect(){
+  const v = S.fv; if(!v.img) return;
+  setStatus('#frontStatus', 'Chargement du modèle de détection (≈ 4 Mo, une seule fois)…');
+  $('#frontAuto').disabled = true;
+  try{
+    const lm = await getLandmarker();
+    setStatus('#frontStatus', 'Détection des repères…');
+    const res = lm.detect(v.img);
+    if(!res.faceLandmarks || !res.faceLandmarks.length) throw new Error('Aucun visage détecté. Essayez une photo plus nette et bien de face, ou le placement manuel.');
+    const m = mapMediaPipe(res.faceLandmarks[0], v.img.width, v.img.height);
+    v.pts = m.pts; v.flags = m.flags; S.irisPx = m.irisPx; S.source = 'auto';
+    v.fitPoints(.28);
+    setStatus('#frontStatus', 'Repères détectés. Vérifiez les points orange (ligne des cheveux, angles de mâchoire) et glissez-les si besoin.');
+    updateFront();
+  }catch(e){
+    console.error(e);
+    const offline = /import|fetch|Failed|network|dynamically/i.test(String(e && e.message));
+    setStatus('#frontStatus', offline
+      ? 'Détection automatique indisponible (pas de connexion au CDN). Utilisez le placement manuel guidé : tout fonctionne hors ligne.'
+      : e.message, true);
+  }finally{ $('#frontAuto').disabled = false; }
+}
+function startGuide(viewer, defs, guideEl, statusSel, keys){
+  viewer.pts = {}; viewer.flags = {};
+  if(viewer === S.fv){ S.irisPx = null; S.frontRes = null; S.skin = null; $('#frontMetrics').innerHTML=''; }
+  const step = () => { const k = viewer.guide.keys[viewer.guide.i], d = defs.find(x=>x[0]===k);
+    guideEl.innerHTML = `Point ${viewer.guide.i+1}/${keys.length} : <b>${esc(d[1])}</b> · ${esc(d[2])} <button style="margin-left:8px" id="${guideEl.id}Skip">Annuler</button>`;
+    $('#'+guideEl.id+'Skip').onclick = () => { viewer.guide=null; guideEl.classList.remove('on'); viewer.draw(); };
+  };
+  viewer.guide = { keys, i:0, step, done: () => { guideEl.classList.remove('on'); setStatus(statusSel, 'Tous les points sont placés. Glissez-les pour affiner (loupe pendant le déplacement).'); viewer.changed(); } };
+  guideEl.classList.add('on'); step(); viewer.draw();
+}
+
+wireDrop($('#frontDrop'), $('#frontFile'), onFrontFile);
+$('#frontAuto').onclick = autoDetect;
+$('#frontManual').onclick = () => startGuide(S.fv, FRONT_DEFS, $('#frontGuide'), '#frontStatus', FRONT_DEFS.map(d=>d[0]));
+$('#frontNew').onclick = () => { $('#frontFile').value=''; $('#frontFile').click(); };
+$('#frontZoom').onclick = () => {
+  const v=S.fv; const full = v.view.w===v.img.width && v.view.h===v.img.height;
+  if(full && Object.keys(v.pts).length){ v.fitPoints(.28); $('#frontZoom').textContent='Vue entière'; }
+  else { v.setView({x:0,y:0,w:v.img.width,h:v.img.height}); $('#frontZoom').textContent='Zoom visage'; }
+};
+$$('#frontToggles input').forEach(i => i.addEventListener('change', () => {
+  OV[i.dataset.ov] = i.checked; S.fv.showPoints = OV.points; S.fv.showLabels = OV.labels; S.fv.draw();
+}));
+
+// Caméra (si le navigateur l'autorise dans ce contexte)
+if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+  $('#frontCam').classList.remove('hidden');
+  const extraBtn = document.createElement('button'); extraBtn.textContent = 'Utiliser la caméra';
+  extraBtn.className='no-print'; extraBtn.style.marginTop='10px';
+  $('#frontDrop').after(extraBtn);
+  const openCam = async () => {
+    try{
+      const st = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user', width:{ideal:1280}}});
+      const vid = $('#camVideo'); vid.srcObject = st; await vid.play();
+      vid.classList.remove('hidden'); $('#camBar').classList.remove('hidden'); S.stream = st;
+    }catch(e){ setStatus('#frontStatus', 'Caméra indisponible : '+e.message, true); }
+  };
+  const stopCam = () => { S.stream && S.stream.getTracks().forEach(t=>t.stop()); $('#camVideo').classList.add('hidden'); $('#camBar').classList.add('hidden'); };
+  extraBtn.onclick = openCam; $('#frontCam').onclick = openCam;
+  $('#camStop').onclick = stopCam;
+  $('#camShot').onclick = () => { const vid=$('#camVideo'); const img = toCanvas(vid, vid.videoWidth, vid.videoHeight); stopCam(); extraBtn.remove(); startFront(img); };
+  S.camBtn = extraBtn;
+}
+
+/* ------------------------------ état et flux : PROFIL ------------------------------ */
+function updateProfile(){
+  S.profRes = computeProfile(S.pv.pts, S.sex);
+  const box = $('#profMetrics');
+  if(!S.profRes){ box.innerHTML=''; return; }
+  const h = harmony(S.profRes.metrics);
+  $('#profSummary').innerHTML = `<div class="kpis"><div class="kpi"><div class="k">Harmonie (profil)</div><div class="v">${h.toFixed(1)}<span class="small muted"> /10</span></div><div class="s">orientation : regard vers la ${S.profRes.geom.dir>0?'droite':'gauche'}</div></div></div>
+    ${S.profRes.warnings.map(w=>`<div class="note" style="border-color:var(--bad)">${esc(w)}</div>`).join('')}
+    <p class="muted small">Les distances en mm sont estimées à partir d'une hauteur nasion–menton moyenne (${NME_MM[S.sex]} mm). Leur signe est fiable, leur valeur absolue approximative.</p>`;
+  box.innerHTML = groupHTML(S.profRes.metrics);
+  renderReport();
+}
+async function onProfFile(file){
+  try{
+    const img = await loadImageFile(file);
+    S.pv.setImage(img); S.profRes = null;
+    $('#profDrop').classList.add('hidden'); $('#profStage').classList.add('on');
+    $('#profTools').hidden = false; $('#profToggles').hidden = false; $('#profMetrics').innerHTML='';
+    setStatus('#profStatus', 'Astuce : zoomez la page si besoin. Vous pourrez recadrer sur les points ensuite.');
+    startGuide(S.pv, PROF_DEFS, $('#profGuide'), '#profStatus', PROF_DEFS.map(d=>d[0]));
+  }catch(e){ setStatus('#profStatus', e.message, true); }
+}
+wireDrop($('#profDrop'), $('#profFile'), onProfFile);
+$('#profManual').onclick = () => startGuide(S.pv, PROF_DEFS, $('#profGuide'), '#profStatus', PROF_DEFS.map(d=>d[0]));
+$('#profNew').onclick = () => { $('#profFile').value=''; $('#profFile').click(); };
+$('#profZoom').onclick = () => { const v=S.pv; if(Object.keys(v.pts).length>2) v.fitPoints(.2); };
+$$('#profToggles input').forEach(i => i.addEventListener('change', () => { POV[i.dataset.pov]=i.checked; S.pv.showLabels=POV.labels; S.pv.draw(); }));
+
+/* ------------------------------ rapport ------------------------------ */
+function ring(score){
+  const r=62, c=2*Math.PI*r, f=Math.max(0,Math.min(1,score/10));
+  const col = score>=7.5?'var(--good)':score>=5?'var(--mid)':'var(--bad)';
+  return `<svg class="score-ring" viewBox="0 0 150 150" role="img" aria-label="Score ${score.toFixed(1)} sur 10">
+    <circle cx="75" cy="75" r="${r}" fill="none" stroke="var(--track)" stroke-width="12"/>
+    <circle cx="75" cy="75" r="${r}" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(c*f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 75 75)"/>
+    <text x="75" y="80" text-anchor="middle" font-family="Georgia,serif" font-size="36" font-weight="600" fill="var(--ink)">${score.toFixed(1)}</text>
+    <text x="75" y="102" text-anchor="middle" font-size="12" fill="var(--muted)">/ 10</text></svg>`;
+}
+function renderReport(){
+  const box = $('#reportBox');
+  const fr = S.frontRes, pr = S.profRes;
+  if(!fr && !pr){ box.innerHTML = '<p class="muted">Le rapport apparaît après l\'analyse de face (et de profil si vous l\'avez faite).</p>'; return; }
+  const scored = [...(fr?fr.metrics:[]), ...(pr?pr.metrics:[])];
+  const H = harmony(scored);
+  const ranked = scored.filter(m=>m.score!=null).sort((a,b)=>b.score*b.w-a.score*a.w);
+  const strengths = ranked.filter(m=>m.score>=8.5).slice(0,5);
+  const areas = scored.filter(m=>m.score!=null && m.score<6).sort((a,b)=>(a.score-b.score)||(b.w-a.w)).slice(0,5);
+  const skin = skinMetrics(S.skin);
+  box.innerHTML = `
+    <div class="report-head">
+      ${ring(H)}
+      <div>
+        <h2>Rapport d'harmonie faciale</h2>
+        <p class="muted">Normes ${S.sex==='F'?'féminines':'masculines'} · ${fr?'face ✓':'face —'} · ${pr?'profil ✓':'profil —'} · ${new Date().toLocaleDateString('fr-FR')}</p>
+        ${fr?`<p><strong>Forme du visage : ${esc(fr.shape.s)}</strong> <span class="muted small">(${esc(fr.shape.why)})</span></p>`:''}
+        <div class="bar no-print"><button class="primary" onclick="window.print()">Imprimer / PDF</button><button id="exportJson">Exporter les points (JSON)</button><button id="importJson">Importer</button><input type="file" id="importFile" accept="application/json"></div>
+      </div>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    ${[...(fr?fr.warnings:[]),...(pr?pr.warnings:[])].map(w=>`<div class="note" style="border-color:var(--bad)">${esc(w)}</div>`).join('')}
+    <div class="cols2" style="margin-top:14px">
+      <div class="panel"><h3>Points forts</h3>${strengths.length?`<ul>${strengths.map(m=>`<li>${esc(m.name)} <span class="muted small">${esc(m.disp)}</span></li>`).join('')}</ul>`:'<p class="muted small">Aucune mesure dans la zone idéale stricte.</p>'}</div>
+      <div class="panel"><h3>Axes d'attention</h3>${areas.length?`<ul>${areas.map(m=>`<li>${esc(m.name)} <span class="muted small">${esc(m.disp)} · réf. ${esc(m.idealDisp)}</span></li>`).join('')}</ul>`:'<p class="muted small">Aucun écart marqué.</p>'}</div>
+    </div>
+    <div class="note">Ce score résume la distance à des normes statistiques de proportions (canons néoclassiques, anthropométrie de Farkas, études de perception). Il ne mesure ni la beauté, ni la valeur d'une personne. Les normes viennent surtout de populations européennes et varient selon l'origine, l'âge et le style. La qualité de la photo (distance, focale, inclinaison, expression) peut déplacer plusieurs mesures de plusieurs points.</div>
+    ${fr?`<h2 style="margin-top:20px">Face</h2>${groupHTML(fr.metrics)}`:''}
+    ${skin.length?`<h2 style="margin-top:20px">Peau</h2><p class="muted small">Indicateurs photométriques relatifs : ils dépendent de l'éclairage, de la balance des blancs et de la compression. Comparez plutôt des photos prises dans les mêmes conditions.</p>${groupHTML(skin)}`:''}
+    ${pr?`<h2 style="margin-top:20px">Profil</h2>${groupHTML(pr.metrics)}`:''}
+    <h3 style="margin-top:20px">Tableau récapitulatif</h3>
+    <table class="t"><thead><tr><th>Mesure</th><th class="n">Valeur</th><th class="n">Référence</th><th class="n">Score</th></tr></thead><tbody>
+    ${scored.map(m=>`<tr><td>${esc(m.name)}</td><td class="n">${esc(m.disp)}</td><td class="n">${esc(m.idealDisp||'—')}</td><td class="n">${m.score!=null?m.score.toFixed(1):'—'}</td></tr>`).join('')}
+    </tbody></table>`;
+  const th = $('#thumbs');
+  for(const v of [S.fv, S.pv]) if(v.img && v.cv.width && Object.keys(v.pts).length){ const c=document.createElement('canvas'); th.appendChild(c); snapshot(v, c); }
+  $('#exportJson').onclick = exportJson;
+  $('#importJson').onclick = () => $('#importFile').click();
+  $('#importFile').onchange = e => importJson(e.target.files[0]);
+}
+function snapshot(v, out){
+  const w = 320, k = w/v.view.w; out.width = w; out.height = Math.round(v.view.h*k);
+  out.getContext('2d').drawImage(v.cv, 0, 0, out.width, out.height);
+}
+function exportJson(){
+  const data = { app:'Proportio', version:1, sex:S.sex, date:new Date().toISOString(),
+    front:{ pts:S.fv.pts, irisPx:S.irisPx, w:S.fv.img&&S.fv.img.width, h:S.fv.img&&S.fv.img.height },
+    profile:{ pts:S.pv.pts, w:S.pv.img&&S.pv.img.width, h:S.pv.img&&S.pv.img.height },
+    results:{ front:S.frontRes&&S.frontRes.metrics.map(m=>({id:m.id,value:m.value,score:m.score})), profile:S.profRes&&S.profRes.metrics.map(m=>({id:m.id,value:m.value,score:m.score})) } };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:'application/json'}));
+  a.download = 'proportio-analyse.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+async function importJson(file){
+  if(!file) return;
+  try{
+    const d = JSON.parse(await file.text());
+    if(d.sex) setSex(d.sex);
+    if(d.front && S.fv.img && d.front.pts){ S.fv.pts = d.front.pts; S.fv.flags = {}; S.irisPx = d.front.irisPx; updateFront(); S.fv.draw(); }
+    if(d.profile && S.pv.img && d.profile.pts){ S.pv.pts = d.profile.pts; updateProfile(); S.pv.draw(); }
+    if(!S.fv.img && !S.pv.img) alert('Chargez d\'abord les mêmes photos, puis importez les points.');
+  }catch(e){ alert('Fichier invalide : '+e.message); }
+}
+
+/* ------------------------------ savoir ------------------------------ */
+$('#knowBox').innerHTML = `
+  <h2>Ce que mesure l'analyse, et ses limites</h2>
+  <p>L'attractivité perçue d'un visage repose sur quelques grands facteurs, bien établis par la recherche en psychologie de la perception. Aucun ne se résume à un seul « ratio magique ».</p>
+  <h3>1. Proportions et « moyennité »</h3>
+  <p>Les visages proches de la moyenne d'une population sont jugés plus attrayants (Langlois et Roggman, 1990). Les canons néoclassiques (trois tiers, cinq cinquièmes, largeur du nez égale à la distance intercanthale) décrivent grossièrement cette moyenne. Farkas (1985) a toutefois montré que la plupart des gens ne les respectent pas exactement : ce sont des repères, pas des lois. Les études de Pallett, Link et Lee (2010) situent les optimums expérimentaux autour de 46 % (écart des yeux / largeur du visage) et 36 % (distance yeux–bouche / hauteur du visage).</p>
+  <h3>2. Symétrie</h3>
+  <p>La symétrie bilatérale est associée à l'attractivité (Rhodes, 2006), mais son effet est plus faible qu'on ne le croit. Tout le monde est asymétrique, et des visages parfaitement symétrisés artificiellement paraissent souvent étranges. La photo compte beaucoup : un léger quart de tour crée une fausse asymétrie.</p>
+  <h3>3. Dimorphisme sexuel</h3>
+  <p>Les traits typiquement féminins (yeux plus ouverts, sourcils hauts et arqués, lèvres pleines, mâchoire étroite, menton fin) et typiquement masculins (arcades marquées, sourcils bas, mâchoire large et angle goniaque fermé, menton haut et projeté) modulent l'attractivité (Perrett et al., 1998 ; Little et al., 2011). C'est pourquoi l'outil utilise des références différentes selon les normes choisies.</p>
+  <h3>4. Qualité de la peau</h3>
+  <p>L'homogénéité du teint et de la couleur influence fortement la perception de l'âge et de la santé (Fink et al., 2006). Ce facteur se travaille souvent plus facilement que la structure osseuse. Les indicateurs de peau de l'outil sont photométriques et relatifs : utilisez-les pour suivre une évolution dans les mêmes conditions de lumière.</p>
+  <h3>5. Le nombre d'or : un mythe tenace</h3>
+  <p>Le « masque de Marquardt » et le nombre d'or (1,618) n'ont pas de validation solide : les visages jugés beaux ne s'y conforment pas mieux que les autres (Holland, 2008 ; Kiekens et al., 2008). L'outil ne l'utilise que là où il coïncide avec des normes mesurées (rapport bouche / nez, rapport des lèvres).</p>
+  <h3>Bien prendre ses photos</h3>
+  <ul>
+    <li><strong>Distance :</strong> 1,5 m au minimum, en zoomant. Un selfie pris à 30 cm grossit le nez d'environ 30 % (Ward et al., 2018).</li>
+    <li><strong>Face :</strong> objectif à hauteur des yeux, tête droite, regard dans l'objectif, expression neutre, bouche fermée, cheveux dégagés du front et des oreilles.</li>
+    <li><strong>Profil :</strong> exactement 90°, regard à l'horizontale (plan de Francfort horizontal), épaules détendues, cou dégagé.</li>
+    <li><strong>Lumière :</strong> diffuse et de face (fenêtre en face de vous), sans flash direct, sans filtre ni retouche.</li>
+  </ul>
+  <h3>Glossaire des repères</h3>
+  <table class="t"><tbody>
+  ${[...FRONT_DEFS.filter(d=>!/[RL]$/.test(d[0])), ...PROF_DEFS.filter(d=>['po','or','cm','ac','pog','c','ra','go'].includes(d[0]))].map(d=>`<tr><td><strong>${esc(d[1])}</strong></td><td>${esc(d[2])}</td></tr>`).join('')}
+  <tr><td><strong>Canthus</strong></td><td>coin de l'œil (interne, côté nez ; externe, côté tempe)</td></tr>
+  <tr><td><strong>Zygion</strong></td><td>point le plus latéral de l'arcade zygomatique (pommette)</td></tr>
+  </tbody></table>
+  <div class="note">Cet outil est éducatif. Il ne remplace pas une consultation médicale. Les « leviers » cités vont du simple (coiffure, maquillage, soins) au médical ; ces derniers ont des risques et se discutent avec un professionnel qualifié. Si l'examen de votre apparence devient une source d'anxiété importante, parlez-en à un professionnel de santé.</div>
+`;
+
+/* ------------------------------ divers ------------------------------ */
+function setStatus(sel, msg, warn){ const el=$(sel); el.textContent = msg||''; el.classList.toggle('warn', !!warn); }
+function setSex(s){
+  S.sex = s; $$('#sexSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sex===s)));
+  if(S.fv.img && Object.keys(S.fv.pts).length) updateFront();
+  if(S.pv.img && Object.keys(S.pv.pts).length) updateProfile();
+}
+$$('#sexSeg button').forEach(b => b.onclick = () => setSex(b.dataset.sex));
+$$('.tab').forEach(t => t.onclick = () => {
+  $$('.tab').forEach(x => x.setAttribute('aria-selected', String(x===t)));
+  $$('[data-tab]').forEach(s => s.hidden = s.dataset.tab !== t.dataset.go);
+  if(t.dataset.go==='front') S.fv.layout();
+  if(t.dataset.go==='profile') S.pv.layout();
+  if(t.dataset.go==='report') renderReport();
+});
+$('#themeBtn').onclick = () => {
+  const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+};
+window.addEventListener('beforeprint', () => { renderReport(); $$('#reportBox details').forEach(d => d.open = true); });
+// Préchargement discret du modèle
+setTimeout(() => getLandmarker().catch(()=>{}), 1500);
+
+// Accès pour tests automatisés
+window.__proportio = { S, computeFront, computeProfile };
+</script>
+</body>
+</html>
