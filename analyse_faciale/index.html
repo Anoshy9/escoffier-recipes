@@ -102,13 +102,20 @@ table.t{border-collapse:collapse;width:100%;font-size:13px}
 table.t td,table.t th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}
 table.t td.n{text-align:right;font-variant-numeric:tabular-nums}
 .hidden{display:none!important}
+.advice{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.advice h4,.tier h4{margin:0 0 4px;font:600 14px var(--sans)}
+.advice p{margin:0;font-size:14px}
+.tier{border-left:3px solid var(--accent);padding:4px 0 4px 12px;margin:10px 0}
+.tier ul{margin:4px 0;padding-left:18px}
+.tier li{margin:3px 0;font-size:14px}
+ol.prio li{margin:6px 0}
 @media print{
   header .bar,.tabs,.no-print,.drop,.toggles,.guide{display:none!important}
   body{background:#fff;color:#000}
   .panel{box-shadow:none;border-color:#ddd}
   [data-tab]{display:none!important}
   [data-tab="report"]{display:block!important}
-  .m{break-inside:avoid}
+  .m,.advice,.tier{break-inside:avoid}
   details.m > .body{display:block}
 }
 </style>
@@ -662,7 +669,8 @@ function mapMediaPipe(lm, W, H){
   pts.tr = G.add(top, G.mul(G.sub(top, gl), .45));
   // Diamètre de l'iris → échelle mm
   const irisPx = (G.dist(P(469),P(471)) + G.dist(P(470),P(472)) + G.dist(P(474),P(476)) + G.dist(P(475),P(477)))/4;
-  return { pts, irisPx, flags:{ tr:true, goR:true, goL:true } };
+  const mouthGap = G.dist(P(13),P(14)) / G.dist(P(61),P(291));
+  return { pts, irisPx, mouthGap, flags:{ tr:true, goR:true, goL:true } };
 }
 
 /* ------------------------------ calculs de face ------------------------------ */
@@ -1003,6 +1011,7 @@ function updateFront(live){
   S.frontRes = computeFront(v.pts, S.sex, S.irisPx);
   const box = $('#frontMetrics'), sum = $('#frontSummary');
   if(!S.frontRes){ box.innerHTML=''; return; }
+  if(S.mouthGap > .08) S.frontRes.warnings.push('Bouche ouverte ou sourire détecté : le tiers inférieur, les lèvres et le menton sont faussés. Pour une analyse fiable, utilisez une photo avec une expression neutre et la bouche fermée.');
   clearTimeout(skinTimer);
   const run = () => { S.skin = analyzeSkin(v.img, S.frontRes); renderFrontPanel(); v.draw(); };
   if(live) skinTimer = setTimeout(run, 250); else run();
@@ -1030,7 +1039,7 @@ async function onFrontFile(file){
   }catch(e){ setStatus('#frontStatus', e.message, true); }
 }
 function startFront(img){
-  S.fv.setImage(img); S.irisPx = null; S.frontRes = null; S.skin = null;
+  S.fv.setImage(img); S.irisPx = null; S.mouthGap = 0; S.frontRes = null; S.skin = null;
   $('#frontDrop').classList.add('hidden'); $('#frontStage').classList.add('on');
   S.camBtn && S.camBtn.classList.add('hidden');
   $('#frontTools').hidden = false; $('#frontToggles').hidden = false;
@@ -1047,7 +1056,7 @@ async function autoDetect(){
     const res = lm.detect(v.img);
     if(!res.faceLandmarks || !res.faceLandmarks.length) throw new Error('Aucun visage détecté. Essayez une photo plus nette et bien de face, ou le placement manuel.');
     const m = mapMediaPipe(res.faceLandmarks[0], v.img.width, v.img.height);
-    v.pts = m.pts; v.flags = m.flags; S.irisPx = m.irisPx; S.source = 'auto';
+    v.pts = m.pts; v.flags = m.flags; S.irisPx = m.irisPx; S.mouthGap = m.mouthGap; S.source = 'auto';
     v.fitPoints(.28);
     setStatus('#frontStatus', 'Repères détectés. Vérifiez les points orange (ligne des cheveux, angles de mâchoire) et glissez-les si besoin.');
     updateFront();
@@ -1061,7 +1070,7 @@ async function autoDetect(){
 }
 function startGuide(viewer, defs, guideEl, statusSel, keys){
   viewer.pts = {}; viewer.flags = {};
-  if(viewer === S.fv){ S.irisPx = null; S.frontRes = null; S.skin = null; $('#frontMetrics').innerHTML=''; }
+  if(viewer === S.fv){ S.irisPx = null; S.mouthGap = 0; S.frontRes = null; S.skin = null; $('#frontMetrics').innerHTML=''; }
   const step = () => { const k = viewer.guide.keys[viewer.guide.i], d = defs.find(x=>x[0]===k);
     guideEl.innerHTML = `Point ${viewer.guide.i+1}/${keys.length} : <b>${esc(d[1])}</b> · ${esc(d[2])} <button style="margin-left:8px" id="${guideEl.id}Skip">Annuler</button>`;
     $('#'+guideEl.id+'Skip').onclick = () => { viewer.guide=null; guideEl.classList.remove('on'); viewer.draw(); };
@@ -1131,6 +1140,261 @@ $('#profNew').onclick = () => { $('#profFile').value=''; $('#profFile').click();
 $('#profZoom').onclick = () => { const v=S.pv; if(Object.keys(v.pts).length>2) v.fitPoints(.2); };
 $$('#profToggles input').forEach(i => i.addEventListener('change', () => { POV[i.dataset.pov]=i.checked; S.pv.showLabels=POV.labels; S.pv.draw(); }));
 
+/* ------------------------------ recommandations ------------------------------ */
+// Niveaux d'intervention, du plus simple au plus lourd.
+const TIERS = {
+  S:{name:'Style', sub:'coiffure, barbe, maquillage, sourcils : gratuit ou peu coûteux, réversible'},
+  K:{name:'Soins & hygiène de vie', sub:'routine, sommeil, composition corporelle, posture'},
+  N:{name:'Médecine esthétique', sub:'injections et techniques non chirurgicales, en général temporaires'},
+  C:{name:'Chirurgie', sub:'définitif, avec des risques : à discuter avec un chirurgien qualifié'},
+};
+// Conseils selon le sens de l'écart : [niveau, texte, sexe facultatif]
+const ADVICE = {
+  thirdU:{
+    lo:[['S','Dégagez le front : coiffure en arrière ou volume vers le haut, pas de frange épaisse.'],['S','Maquillage : éclaircir le centre du front l\'agrandit visuellement.','F']],
+    hi:[['S','Une frange (rideau, effilée ou droite) raccourcit le tiers supérieur. C\'est le levier le plus efficace.'],['S','Évitez le volume au sommet du crâne et les coiffures plaquées en arrière.'],['S','Contouring à la racine des cheveux pour raccourcir le front.','F'],['K','Si la ligne des cheveux recule : un traitement précoce (minoxidil, finastéride sur avis médical) freine la progression.','M'],['C','Greffe capillaire ou abaissement chirurgical de la ligne frontale.']]},
+  thirdM:{
+    lo:[['S','Des sourcils légèrement plus hauts allongent visuellement le milieu du visage.']],
+    hi:[['S','Contouring sous la pointe du nez pour la raccourcir visuellement.','F'],['S','Une moustache ou une barbe courte rééquilibre un nez long.','M'],['S','Des sourcils plus bas et plus fournis réduisent l\'espace entre le front et le nez.'],['C','Rhinoplastie de raccourcissement ou de rotation de la pointe.']]},
+  thirdL:{
+    lo:[['S','Barbe plus longue au menton (bouc, barbe en ancre) pour allonger le bas du visage.','M'],['S','Contouring : éclaircir le centre du menton l\'allonge visuellement.','F'],['N','Acide hyaluronique au menton : allongement vertical léger et réversible.'],['C','Génioplastie ou implant de menton. En cas de supraclusion, bilan orthodontique.']],
+    hi:[['S','Barbe courte au menton et plus fournie sur les côtés pour raccourcir le bas du visage.','M'],['S','Contouring sous le menton (ombre) pour le raccourcir visuellement.','F'],['C','Génioplastie de réduction verticale, ou chirurgie orthognathique si le maxillaire est en excès vertical.']]},
+  lowerRatio:{
+    hi:[['S','Un rouge à lèvres qui redessine légèrement au-dessus du bord supérieur réduit le philtrum visible.','F'],['S','La moustache masque un philtrum long.','M'],['N','Acide hyaluronique dans la lèvre supérieure : elle se retrousse et paraît moins longue.'],['C','Lip lift (le « bullhorn » réduit le philtrum de 3 à 5 mm).']],
+    lo:[['S','Un menton mis en valeur (barbe courte, contouring) équilibre une lèvre supérieure courte.']]},
+  chinPhil:{
+    lo:[['S','Barbe plus fournie et plus longue au menton pour lui donner de la hauteur.','M'],['S','Éclaircir la pointe du menton (highlighter) pour l\'allonger visuellement.','F'],['N','Filler de menton pour ajouter hauteur et projection.'],['C','Implant de menton ou génioplastie d\'avancée.']],
+    hi:[['S','Barbe courte au menton, plus fournie sur les joues.','M'],['S','Ombre sous le menton pour le raccourcir visuellement.','F']]},
+  canthal:{
+    lo:[['S','Eye-liner étiré vers la tempe et ombre foncée sur le tiers externe de la paupière pour relever le regard.','F'],['S','Épilez le dessous de la queue du sourcil pour la relever : elle entraîne visuellement le coin de l\'œil.'],['K','Sommeil et réduction des œdèmes : des paupières gonflées accentuent un regard tombant.'],['N','Toxine botulique sur la queue du sourcil (lift chimique de 1 à 2 mm).'],['C','Lift temporal ou canthopexie. La canthoplastie est plus risquée.']],
+    hi:[['S','Maquillage : un liner droit, sans étirement vers le haut, adoucit un regard très bridé.','F']]},
+  esr:{
+    lo:[['S','Éclaircissez le coin interne de l\'œil (fard clair, highlighter) pour écarter visuellement les yeux.','F'],['S','Espacez un peu plus les têtes de sourcils (épilation entre les sourcils).'],['S','Évitez le volume latéral dans la coiffure : il élargit le visage par rapport aux yeux.']],
+    hi:[['S','Assombrissez le coin interne (ombre, liner en « V ») pour rapprocher visuellement les yeux.','F'],['S','Laissez pousser la tête des sourcils vers le nez.'],['S','Du volume latéral dans la coiffure élargit le visage par rapport aux yeux.']]},
+  lengthRatio:{
+    lo:[['S','Du volume sur le dessus ou une coiffure dégagée allonge le visage perçu.']],
+    hi:[['S','Une frange ou une coiffure couvrante raccourcit la hauteur perçue du visage.'],['S','Barbe fournie sur les côtés et courte au menton.','M']]},
+  icEye:{
+    hi:[['S','Maquillage foncé sur le coin interne et liner qui rejoint le coin interne.','F'],['S','Laissez les têtes de sourcils se rapprocher (arrêtez d\'épiler entre les sourcils).'],['C','Si c\'est un vrai télécanthus : avis en chirurgie oculoplastique. Une rhinoplastie de la racine du nez peut aussi modifier la perception.']],
+    lo:[['S','Fard clair sur le coin interne, liner arrêté avant le coin interne.','F'],['S','Épilez légèrement entre les sourcils pour ouvrir l\'espace.']]},
+  eyeAspect:{
+    lo:[['K','Vérifiez le sommeil, les allergies et l\'alcool : ils gonflent les paupières.'],['S','Mascara recourbant, crayon clair dans la ligne d\'eau inférieure : l\'œil paraît plus ouvert.','F'],['C','En cas de paupière tombante (ptose) ou d\'excès de peau : blépharoplastie ou correction de ptose.']],
+    hi:[['S','Un liner sur toute la ligne des cils affine visuellement un œil très rond.','F'],['S','Vérifiez l\'expression : un regard écarquillé sur la photo gonfle cette mesure.']]},
+  midface:{
+    lo:[['S','Moustache ou barbe pour raccourcir visuellement le milieu du visage.','M'],['S','Blush appliqué horizontalement, un peu plus bas sur les pommettes, pour « couper » la hauteur.','F'],['S','Des sourcils un peu plus bas et plus fournis compactent le haut du milieu du visage.']]},
+  fwhr:{
+    lo:[['S','Du volume latéral (coiffure, barbe sur les joues) élargit le visage.'],['K','Musculation générale et masse maigre : la définition des pommettes et de la mâchoire suit.','M']],
+    hi:[['S','Du volume en hauteur, les côtés courts et une barbe plus longue au menton allongent le visage.','M'],['S','Contouring sous les pommettes et longueurs qui encadrent le visage.','F']]},
+  noseIc:{
+    hi:[['K','Refaites une photo à 1,5 m ou plus : un selfie élargit le nez d\'environ 30 %.'],['S','Contouring : deux lignes fines le long de l\'arête, ombre sur les ailes du nez.','F'],['C','Alarplastie (réduction de la base du nez). Les injections n\'affinent pas un nez large.']],
+    lo:[['S','Évitez le contouring du nez, qui l\'affinerait encore.','F']]},
+  mouthNose:{
+    lo:[['S','Maquillage des lèvres qui prolonge légèrement les commissures, gloss au centre.','F'],['S','Une moustache fine ou une barbe de trois jours encadre et élargit la bouche.','M']],
+    hi:[['S','Concentrez la couleur au centre des lèvres, sans marquer les commissures.','F']]},
+  lips:{
+    lo:[['S','Mettez en valeur la lèvre inférieure (gloss au centre), sans surligner la supérieure.','F'],['N','Si la lèvre inférieure est fine : acide hyaluronique ciblé sur elle seulement.']],
+    hi:[['S','Redessinez très légèrement le bord de la lèvre supérieure (crayon juste au-dessus du bord naturel).','F'],['N','Acide hyaluronique léger dans la lèvre supérieure, pour respecter un rapport de 1:1,6.'],['C','Lip lift si c\'est un philtrum long qui enroule la lèvre supérieure.']]},
+  jawCheek:{
+    lo:[['S','Barbe carrée, fournie sur la mâchoire et courte sous les pommettes.','M'],['S','Des longueurs au niveau de la mâchoire (carré, dégradé) pour élargir le bas du visage.','F'],['K','Si vous avez du poids à perdre, la baisse de masse grasse est souvent le levier le plus puissant pour révéler la mâchoire.'],['N','Acide hyaluronique sur l\'angle et la ligne mandibulaire.','M'],['C','Implants d\'angle mandibulaire.','M']],
+    hi:[['S','Barbe plus longue au menton, courte sur les joues : le bas du visage s\'affine en « V ».','M'],['S','Contouring sous la ligne de mâchoire, longueurs qui dépassent la mâchoire et dégradés doux.','F'],['N','Toxine botulique dans les masséters : affinement progressif en 2 à 3 mois si le muscle est hypertrophié.'],['C','Réduction de l\'angle mandibulaire (lourd, rarement justifié).']]},
+  facialIndex:{
+    lo:[['S','Du volume en hauteur et les côtés courts allongent le visage.'],['S','Barbe plus longue au menton et courte sur les joues.','M']],
+    hi:[['S','Évitez le volume en hauteur. Frange et volume latéral élargissent le visage.'],['S','Barbe fournie sur les joues et courte au menton.','M']]},
+  browTilt:{
+    lo:[['S','Épilez le dessous de la queue du sourcil pour la relever. Un gel fixant brossé vers le haut et vers l\'extérieur aide aussi.'],['N','Toxine botulique : lift chimique de la queue du sourcil.'],['C','Lifting temporal ou du front si la ptose du sourcil est marquée.']],
+    hi:[['S','Adoucissez l\'arc : laissez repousser le dessous du pic et remplissez légèrement sous la queue.'],['S','Pour un homme, des sourcils droits et naturels : n\'épilez que le centre.','M']]},
+  browHeight:{
+    lo:[['S','Épilez le dessous du sourcil pour ouvrir le regard.','F'],['N','Toxine botulique pour un lift léger de 1 à 2 mm.','F'],['S','Des sourcils bas sont un trait masculin valorisé : gardez-les naturels et fournis.','M']],
+    hi:[['S','Remplissez le dessous du sourcil (crayon, poudre) pour le rapprocher de l\'œil.'],['S','Laissez repousser le dessous. Épilez seulement le dessus si besoin.','M']]},
+  symmetry:{
+    hi:[['K','Refaites la photo : tête bien droite, objectif à hauteur des yeux, lumière de face. Les fausses asymétries viennent souvent de la prise de vue.'],['S','Raie du côté le plus « fort » : la coiffure peut masquer une asymétrie.'],['K','Évitez de mâcher et de dormir toujours du même côté.'],['C','Asymétrie marquée de la mâchoire ou des dents : avis orthodontique ou maxillo-facial.']]},
+  nasofrontal:{
+    hi:[['N','Acide hyaluronique à la racine du nez (rhinoplastie médicale) pour creuser la transition visuellement.'],['C','Rhinoplastie.']],
+    lo:[['N','Acide hyaluronique à la racine si elle est très creuse.'],['C','Rhinoplastie.']]},
+  nasolabial:{
+    lo:[['N','Toxine botulique sur le muscle abaisseur du septum si la pointe tombe au sourire.'],['C','Rhinoplastie de rotation de la pointe.']],
+    hi:[['C','Rhinoplastie (dérotation de la pointe) : correction délicate.']]},
+  goode:{
+    lo:[['C','Rhinoplastie de projection de la pointe.']],
+    hi:[['C','Rhinoplastie de déprojection de la pointe.']]},
+  convexity:{
+    lo:[['S','Barbe plus longue et fournie au menton pour projeter le profil.','M'],['K','Posture : une tête portée en avant accentue le retrait du menton.'],['N','Filler de menton (projection de 2 à 4 mm).'],['C','Implant de menton, génioplastie d\'avancée, ou chirurgie orthognathique en cas de rétrognathie mandibulaire.']],
+    hi:[['S','Barbe courte au menton.','M'],['C','Bilan orthodontique ou orthognathique en cas de prognathie.']]},
+  eUpper:{
+    lo:[['N','Acide hyaluronique pour projeter légèrement la lèvre supérieure.'],['S','Le gloss et une couleur claire donnent du volume à la lèvre.','F']],
+    hi:[['K','Normal dans de nombreuses origines ethniques. Si c\'est lié aux dents : bilan orthodontique.'],['N','Projeter le menton déplace la ligne E et réduit l\'écart.']]},
+  eLower:{
+    lo:[['N','Filler de la lèvre inférieure, avec prudence.']],
+    hi:[['N','Souvent lié à un menton en retrait : projeter le menton (filler, implant) rééquilibre le profil.']]},
+  mentocervical:{
+    hi:[['K','Posture : redressez la tête et le cou. Sur les photos, avancez légèrement le menton vers l\'objectif.'],['K','La baisse de masse grasse affine le dessous du menton.'],['N','Injection lipolytique sous-mentonnière (acide désoxycholique).'],['C','Liposuccion sous-mentonnière et/ou projection du menton.']]},
+  cervicomental:{
+    hi:[['K','Posture : une tête portée en avant ouvre l\'angle. Travaillez la posture cervicale (renforcement des fléchisseurs profonds du cou).'],['K','Baisse de masse grasse si vous en avez à perdre.'],['S','Photo : légèrement de dessus, menton poussé vers l\'avant (pas vers le haut).'],['N','Injection lipolytique ou radiofréquence sous-mentonnière.'],['C','Liposuccion ou lifting du cou, projection du menton.']]},
+  gonial:{
+    hi:[['S','Barbe dessinée avec un angle net sous l\'oreille.','M'],['K','Baisse de masse grasse pour définir l\'angle.'],['N','Acide hyaluronique sur l\'angle mandibulaire.'],['C','Implants d\'angle.']],
+    lo:[['S','Une barbe arrondie adoucit une mâchoire très carrée.','M'],['N','Toxine botulique du masséter si le muscle est volumineux.']]},
+  meridian:{
+    lo:[['S','Barbe au menton pour gagner en projection.','M'],['N','Filler de menton.'],['C','Implant ou génioplastie d\'avancée. Si l\'occlusion est en cause : chirurgie orthognathique.']],
+    hi:[['S','Barbe courte au menton.','M'],['C','Génioplastie de recul si l\'excès est marqué (rare).']]},
+};
+
+const HAIR = {
+  F:{
+    Ovale:'Presque tout vous va : carré plongeant, frange rideau, long dégradé. Choisissez selon la texture de vos cheveux.',
+    Rond:'Volume sur le dessus, longueurs qui dépassent le menton, raie sur le côté, dégradé effilé devant. Évitez le carré arrêté au niveau des joues et la frange droite épaisse.',
+    'Carré':'Ondulations et dégradés doux autour de la mâchoire, raie décalée, longueurs sous la mâchoire. Évitez le carré droit coupé pile au niveau de la mâchoire.',
+    Rectangulaire:'Frange (rideau ou droite) et volume sur les côtés, carré mi-long avec du mouvement. Évitez le volume au sommet et les longueurs très lisses et plates.',
+    Oblong:'Frange et volume latéral pour élargir. Carré ou mi-long ondulé. Évitez le volume sur le dessus.',
+    'Cœur':'Volume à hauteur de la mâchoire : carré long, pointes vers l\'extérieur, frange rideau latérale. Évitez le volume au niveau des tempes.',
+    Diamant:'Frange ou mèches qui élargissent le front, volume au niveau du menton (carré à la mâchoire). Évitez de dégager complètement les pommettes.',
+    Triangle:'Volume sur le haut et aux tempes, dégradés courts au-dessus. Évitez le volume au niveau de la mâchoire (carré court arrondi).',
+  },
+  M:{
+    Ovale:'Presque tout vous va : side part, quiff, crop texturé, buzz cut.',
+    Rond:'Côtés courts (fade) et volume vertical (quiff, pompadour, crop haut) pour allonger. Une barbe anguleuse donne du relief.',
+    'Carré':'Coupes courtes classiques (crew cut, crop texturé, side part). Votre mâchoire est un atout : évitez de la cacher.',
+    Rectangulaire:'Peu de hauteur : frange texturée, côtés un peu plus longs (pas de fade à blanc). La barbe peut rester courte.',
+    Oblong:'Frange texturée ou mèche tombante, côtés gardés un peu plus longs. Évitez les pompadours hauts.',
+    'Cœur':'Longueur moyenne, frange texturée pour réduire le front. Une barbe fournie élargit le bas du visage.',
+    Diamant:'Frange ou texture sur le front, côtés pas rasés à blanc. Une barbe pleine élargit le menton.',
+    Triangle:'Du volume sur le dessus et le haut des côtés. Barbe courte pour ne pas élargir la mâchoire.',
+  },
+};
+const GLASSES = {
+  Ovale:'La plupart des formes vous vont. Gardez une monture aussi large que le visage.',
+  Rond:'Montures rectangulaires ou anguleuses, pont fin, plus larges que hautes.',
+  'Carré':'Montures rondes ou ovales, fines, pour adoucir les angles.',
+  Rectangulaire:'Grandes montures hautes, branches marquées, pont bas : elles raccourcissent le visage.',
+  Oblong:'Grandes montures hautes, type aviateur ou carré épais : elles raccourcissent le visage.',
+  'Cœur':'Montures plus marquées en bas, légères en haut (aviateur, ovales, sans cercle en haut).',
+  Diamant:'Montures ovales, papillon (cat-eye) ou browline, qui élargissent le front et le menton.',
+  Triangle:'Montures marquées en haut (browline, papillon) pour élargir le haut du visage.',
+};
+const BLUSH = {
+  Ovale:'Blush sur le haut des pommettes, estompé vers les tempes.',
+  Rond:'Blush en diagonale, du creux de la pommette vers la tempe. Contouring sous les pommettes.',
+  'Carré':'Blush arrondi sur le haut des pommettes. Ombre douce sur les angles de la mâchoire.',
+  Rectangulaire:'Blush horizontal vers le centre du visage. Ombre en haut du front et sous le menton.',
+  Oblong:'Blush horizontal. Ombre à la racine des cheveux et sous le menton.',
+  'Cœur':'Blush sur le haut des pommettes. Ombre sur les tempes, lumière sur le menton.',
+  Diamant:'Blush au centre des pommettes, sans remonter. Lumière au centre du front et du menton.',
+  Triangle:'Blush haut vers les tempes. Ombre sur les angles de la mâchoire.',
+};
+
+function tipsFor(m, sex){
+  const list = (ADVICE[m.id] && ADVICE[m.id][m.dir]) || [];
+  return list.filter(t => !t[2] || t[2]===sex);
+}
+function buildAdvice(fr, pr, sex){
+  const all = [...(fr?fr.metrics:[]), ...(pr?pr.metrics:[])].filter(m=>m.score!=null);
+  // Priorités : écarts pondérés par l'importance de la mesure
+  const prio = all.filter(m=>m.score<7 && m.dir)
+    .map(m=>({m, gap:(10-m.score)*m.w}))
+    .sort((a,b)=>b.gap-a.gap).slice(0,5)
+    .map(({m,gap})=>({m, gap, tips:tipsFor(m, sex)}))
+    .filter(x=>x.tips.length);
+  // Plan par niveau d'intervention, dédoublonné
+  const plan = {S:[],K:[],N:[],C:[]}, seen = new Set();
+  for(const {m,tips} of prio) for(const [t,txt] of tips){ if(seen.has(txt)) continue; seen.add(txt); plan[t].push({txt, from:m.name}); }
+
+  const shape = fr && fr.shape.s;
+  const style = [];
+  if(shape){
+    style.push(['Coiffure', HAIR[sex][shape]]);
+    if(sex==='M') style.push(['Barbe', beardAdvice(fr, pr)]);
+    else style.push(['Blush & contouring', BLUSH[shape]]);
+    style.push(['Lunettes', GLASSES[shape]]);
+  }
+  if(fr) style.push(['Sourcils', browAdvice(fr, sex)]);
+
+  const skin = skinRoutine(S.skin, sex);
+  const photo = photoAdvice(fr, pr);
+  const keep = all.filter(m=>m.score>=8.5).sort((a,b)=>b.w-a.w).slice(0,4).map(strengthTip).filter(Boolean);
+  return {prio, plan, style, skin, photo, keep};
+}
+function get(fr, id){ return fr && fr.metrics.find(m=>m.id===id); }
+function beardAdvice(fr, pr){
+  const tips = [];
+  const jc = get(fr,'jawCheek'), fi = get(fr,'facialIndex'), cp = get(fr,'chinPhil'), cv = get(pr,'convexity'), mer = get(pr,'meridian');
+  if((cp&&cp.dir==='lo') || (cv&&cv.dir==='lo') || (mer&&mer.dir==='lo')) tips.push('Gardez plus de longueur au menton (barbe en ancre, bouc, barbe carrée longue) pour projeter un menton discret.');
+  const tl = get(fr,'thirdL');
+  if(((cp&&cp.dir==='hi') || (tl&&tl.dir==='hi')) && !tips.length) tips.push('Bas du visage long : barbe courte au menton (3 à 10 mm) et plus fournie sur les joues pour raccourcir visuellement.');
+  if(jc&&jc.dir==='lo') tips.push('Laissez la barbe plus fournie le long de la mâchoire, avec un contour net et carré, pour élargir le bas du visage.');
+  if(jc&&jc.dir==='hi') tips.push('Côtés courts et menton légèrement plus long pour affiner une mâchoire large.');
+  if(fi&&fi.dir==='hi') tips.push('Visage long : côtés plus fournis, menton court.');
+  if(fi&&fi.dir==='lo') tips.push('Visage large : côtés courts, menton plus long, contour en « V ».');
+  tips.push('Dessinez le contour des joues net, et la ligne du cou à deux doigts au-dessus de la pomme d\'Adam : une barbe trop basse sur le cou efface la mâchoire.');
+  return tips.join(' ');
+}
+function browAdvice(fr, sex){
+  const t = get(fr,'browTilt'), h = get(fr,'browHeight');
+  const out = [];
+  if(t&&t.dir==='lo') out.push('Queue du sourcil tombante : épilez sous la queue et brossez-la vers le haut.');
+  if(t&&t.dir==='hi') out.push('Arc très marqué : laissez repousser sous le pic pour l\'adoucir.');
+  if(h&&h.dir==='lo') out.push(sex==='F' ? 'Sourcils bas : épilez le dessous pour dégager la paupière.' : 'Sourcils bas : c\'est un trait masculin, gardez-les naturels.');
+  if(h&&h.dir==='hi') out.push('Sourcils hauts : remplissez le dessous au crayon ou à la poudre pour réduire l\'écart avec l\'œil.');
+  if(!out.length) out.push(sex==='F' ? 'Forme et position équilibrées : entretenez l\'arc actuel, pic aux deux tiers du sourcil, à l\'aplomb du bord externe de l\'iris.' : 'Forme équilibrée : n\'épilez que l\'espace entre les sourcils et les poils isolés. Des sourcils droits et fournis sont un atout.');
+  return out.join(' ');
+}
+function skinRoutine(sk, sex){
+  const base = [
+    ['Matin','Nettoyant doux, sérum antioxydant (vitamine C), hydratant, puis <strong>protection solaire SPF 30-50 tous les jours</strong>. C\'est le geste anti-âge le mieux prouvé.'],
+    ['Soir','Nettoyant, puis un actif selon vos besoins (voir ci-dessous), puis hydratant.'],
+  ];
+  const add = [];
+  if(sk){
+    const R = sk.R;
+    if(R.redness>=3) add.push(['Rougeurs','Niacinamide 4-5 % ou acide azélaïque 10-15 %. Évitez les gommages mécaniques, l\'eau très chaude et l\'alcool. Des rougeurs persistantes justifient un avis dermatologique (rosacée, laser vasculaire).']);
+    if(R.texture>=1.6) add.push(['Texture et pores','Rétinoïde le soir (rétinol, puis rétinal ou trétinoïne sur ordonnance), en commençant 2 soirs par semaine. Ou un AHA/BHA 2 à 3 fois par semaine, sans les combiner au début.']);
+    if(R.tone>=2.5) add.push(['Teint irrégulier','La photoprotection est non négociable. Ajoutez vitamine C le matin, niacinamide, acide azélaïque ou tranexamique. Pour des taches installées : peeling ou laser pigmentaire en cabinet.']);
+    if(R.dark!=null && R.dark>=6) add.push(['Cernes','Sommeil régulier, moins de sel et d\'alcool le soir, contour des yeux à la caféine. Correcteur pêche (peau claire) ou orangé (peau mate) avant l\'anticernes. Si la vallée des larmes est creuse, l\'acide hyaluronique donne de meilleurs résultats que les crèmes.']);
+    if(R.shine>=1.5) add.push(['Brillance','Gel nettoyant, niacinamide, BHA (acide salicylique) 2 à 3 fois par semaine. Hydratant léger non comédogène, poudre matifiante avant une photo.']);
+  }
+  if(!add.length) add.push(['Entretien','Aucun indicateur ne ressort : gardez la routine de base. Un rétinoïde le soir est le meilleur investissement à long terme.']);
+  const life = 'Sommeil de 7 à 9 h, arrêt du tabac, hydratation, alimentation riche en végétaux : ce sont les bases de la qualité de peau.' + (sex==='M'?' Après le rasage : un baume sans alcool pour limiter l\'irritation.':'');
+  return {base, add, life};
+}
+function photoAdvice(fr, pr){
+  const out = [];
+  if(fr && Math.abs(fr.yaw)>.06) out.push('La tête était tournée sur la photo de face : refaites-la bien de face avant de tirer des conclusions sur la symétrie et les largeurs.');
+  if(pr && pr.warnings.length) out.push('La tête était inclinée sur le profil : refaites-le avec le regard à l\'horizontale.');
+  const n = get(fr,'noseIc'); if(n && n.dir==='hi') out.push('Un nez large sur la photo est souvent un effet de focale : photographiez-vous à 1,5 m ou plus, en zoomant.');
+  out.push('Votre meilleur angle : un léger trois-quarts, l\'objectif légèrement au-dessus des yeux, le menton poussé vers l\'avant (« tortue ») pour affiner la mâchoire.');
+  out.push('Lumière douce venant de face ou légèrement de côté (fenêtre). Évitez la lumière zénithale, qui creuse les cernes et les sillons.');
+  return out;
+}
+function strengthTip(m){
+  const T = {
+    esr:'L\'espacement de vos yeux est dans l\'optimum : mettez le regard en valeur (sourcils soignés, cils).',
+    canthal:'Votre inclinaison des yeux est un atout : un liner discret suffit à la souligner.',
+    jawCheek:'Vos rapports mâchoire / pommettes sont équilibrés : une coupe qui dégage le visage les met en valeur.',
+    symmetry:'Votre visage est très symétrique : les coupes et raies centrées vous vont bien.',
+    midface:'Votre milieu de visage est compact : c\'est un marqueur de jeunesse.',
+    lips:'Vos lèvres sont bien proportionnées : si vous voulez plus de volume, gardez le même rapport.',
+    mouthNose:'La largeur de votre bouche est bien proportionnée au nez.',
+    convexity:'Votre profil est équilibré : les photos de profil ou de trois-quarts vous flattent.',
+    cervicomental:'Votre ligne cou–mâchoire est nette : dégagez le cou (col ouvert, cheveux relevés).',
+    thirdM:'Le tiers moyen est bien proportionné, et votre nez s\'intègre harmonieusement.',
+    thirdL:'Votre tiers inférieur est bien proportionné.',
+  };
+  return T[m.id] ? {name:m.name, txt:T[m.id]} : null;
+}
+function adviceHTML(A){
+  const tierBlock = k => A.plan[k].length ? `<div class="tier"><h4>${esc(TIERS[k].name)} <span class="muted small">· ${esc(TIERS[k].sub)}</span></h4><ul>${A.plan[k].map(x=>`<li>${esc(x.txt)} <span class="muted small">(${esc(x.from)})</span></li>`).join('')}</ul></div>` : '';
+  return `
+  <h2 style="margin-top:22px">Vos recommandations</h2>
+  <p class="muted small">Recommandations générées à partir de vos mesures, dans l'ordre d'impact estimé. Commencez toujours par les niveaux les plus simples et les plus réversibles.</p>
+  ${A.prio.length ? `<div class="cat">Priorités</div><ol class="prio">${A.prio.map(({m})=>`<li><strong>${esc(m.name)}</strong> <span class="muted small">${esc(m.disp)} · réf. ${esc(m.idealDisp)}</span><br><span class="small">${esc(m.dir==='lo'?m.lo:m.hi)}${(m.id==='thirdU'||m.id==='lengthRatio')&&S.fv.flags.tr?' <em>À confirmer : la ligne des cheveux a été estimée, ajustez le point orange.</em>':''}</span></li>`).join('')}</ol>
+  <div class="cat">Plan d'action</div>${['S','K','N','C'].map(tierBlock).join('')}` : '<p>Aucun écart notable : l\'essentiel est de mettre en valeur vos proportions actuelles (voir ci-dessous).</p>'}
+  ${A.keep.length?`<div class="cat">Vos atouts à mettre en valeur</div><ul>${A.keep.map(k=>`<li><strong>${esc(k.name)}</strong> : ${esc(k.txt)}</li>`).join('')}</ul>`:''}
+  ${A.style.length?`<div class="cat">Style personnalisé</div><div class="cols2">${A.style.map(([t,x])=>`<div class="advice"><h4>${esc(t)}</h4><p>${esc(x)}</p></div>`).join('')}</div>`:''}
+  <div class="cat">Routine de peau</div>
+  <div class="cols2">${[...A.skin.base, ...A.skin.add].map(([t,x])=>`<div class="advice"><h4>${esc(t)}</h4><p>${x}</p></div>`).join('')}</div>
+  <p class="small">${esc(A.skin.life)}</p>
+  <div class="cat">Photos</div><ul>${A.photo.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+  <div class="note">Les options médicales et chirurgicales sont citées pour information. Elles se discutent avec un médecin ou un chirurgien qualifié, qui évaluera votre anatomie réelle, les risques et le rapport bénéfice/risque. Aucune n'est nécessaire : elles répondent à des normes statistiques, pas à un défaut.</div>`;
+}
+
 /* ------------------------------ rapport ------------------------------ */
 function ring(score){
   const r=62, c=2*Math.PI*r, f=Math.max(0,Math.min(1,score/10));
@@ -1168,9 +1432,11 @@ function renderReport(){
       <div class="panel"><h3>Axes d'attention</h3>${areas.length?`<ul>${areas.map(m=>`<li>${esc(m.name)} <span class="muted small">${esc(m.disp)} · réf. ${esc(m.idealDisp)}</span></li>`).join('')}</ul>`:'<p class="muted small">Aucun écart marqué.</p>'}</div>
     </div>
     <div class="note">Ce score résume la distance à des normes statistiques de proportions (canons néoclassiques, anthropométrie de Farkas, études de perception). Il ne mesure ni la beauté, ni la valeur d'une personne. Les normes viennent surtout de populations européennes et varient selon l'origine, l'âge et le style. La qualité de la photo (distance, focale, inclinaison, expression) peut déplacer plusieurs mesures de plusieurs points.</div>
-    ${fr?`<h2 style="margin-top:20px">Face</h2>${groupHTML(fr.metrics)}`:''}
-    ${skin.length?`<h2 style="margin-top:20px">Peau</h2><p class="muted small">Indicateurs photométriques relatifs : ils dépendent de l'éclairage, de la balance des blancs et de la compression. Comparez plutôt des photos prises dans les mêmes conditions.</p>${groupHTML(skin)}`:''}
-    ${pr?`<h2 style="margin-top:20px">Profil</h2>${groupHTML(pr.metrics)}`:''}
+    ${adviceHTML(buildAdvice(fr, pr, S.sex))}
+    <h2 style="margin-top:22px">Détail des mesures</h2>
+    ${fr?`<h3 style="margin-top:14px">Face</h3>${groupHTML(fr.metrics)}`:''}
+    ${skin.length?`<h3 style="margin-top:14px">Peau</h3><p class="muted small">Indicateurs photométriques relatifs : ils dépendent de l'éclairage, de la balance des blancs et de la compression. Comparez plutôt des photos prises dans les mêmes conditions.</p>${groupHTML(skin)}`:''}
+    ${pr?`<h3 style="margin-top:14px">Profil</h3>${groupHTML(pr.metrics)}`:''}
     <h3 style="margin-top:20px">Tableau récapitulatif</h3>
     <table class="t"><thead><tr><th>Mesure</th><th class="n">Valeur</th><th class="n">Référence</th><th class="n">Score</th></tr></thead><tbody>
     ${scored.map(m=>`<tr><td>${esc(m.name)}</td><td class="n">${esc(m.disp)}</td><td class="n">${esc(m.idealDisp||'—')}</td><td class="n">${m.score!=null?m.score.toFixed(1):'—'}</td></tr>`).join('')}
