@@ -2,13 +2,50 @@
   "_commentaire": "Ajustements du bien par rapport à un appartement 1 chambre typique des annonces du quartier. En pourcentage du loyer de marché (+2 = +2 %).",
   "description": "1 chambre, 45–50 m², 1er étage, immeuble de 2006, Barrington Road (près de Loughborough Junction)",
   "ajustements": [
-    {"libelle": "Surface 45–50 m² (dans la moyenne d'un 1 chambre)", "label_en": "45–50 m² floor area (typical for a 1-bed)", "pct": 0},
-    {"libelle": "Immeuble de 2006, double vitrage, EPC C", "label_en": "2006 building, double glazing, EPC C", "pct": 2},
-    {"libelle": "Pas d'espace extérieur", "label_en": "No outdoor space", "pct": -2},
-    {"libelle": "Fenêtres au nord, sur cour privée calme", "label_en": "North-facing windows onto a quiet private courtyard", "pct": -1.5},
-    {"libelle": "Cuisine ouverte en bon état mais datée", "label_en": "Open-plan kitchen in good condition but dated", "pct": -2},
-    {"libelle": "Salle de bain en bon état, sols stratifiés de 2 ans", "label_en": "Bathroom in good condition, laminate floors 2 years old", "pct": 1},
-    {"libelle": "Local vélos", "label_en": "Bike shed", "pct": 0.5},
-    {"libelle": "1er étage sans ascenseur", "label_en": "1st floor, no lift", "pct": 0}
+    {
+      "libelle": "Surface 45–50 m² (dans la moyenne d'un 1 chambre)",
+      "label_en": "45–50 m² floor area (typical for a 1-bed)",
+      "pct": 0
+    },
+    {
+      "libelle": "Immeuble de 2006, double vitrage, EPC C",
+      "label_en": "2006 building, double glazing, EPC C",
+      "pct": 2
+    },
+    {
+      "libelle": "Pas d'espace extérieur",
+      "label_en": "No outdoor space",
+      "pct": -2
+    },
+    {
+      "libelle": "Fenêtres au nord, sur cour privée calme",
+      "label_en": "North-facing windows onto a quiet private courtyard",
+      "pct": -1.5
+    },
+    {
+      "libelle": "Cuisine ouverte d'origine (2006), en bon état",
+      "label_en": "Original 2006 open-plan kitchen, good condition",
+      "pct": 0
+    },
+    {
+      "libelle": "Salle de bain en bon état, meuble et sol vinyle neufs",
+      "label_en": "Bathroom in good condition, new cabinet and vinyl floor",
+      "pct": 1
+    },
+    {
+      "libelle": "Parquet stratifié continu dans tout l'appartement (2 ans)",
+      "label_en": "Continuous laminate wood floor throughout (2 years old)",
+      "pct": 1
+    },
+    {
+      "libelle": "Local vélos",
+      "label_en": "Bike shed",
+      "pct": 0.5
+    },
+    {
+      "libelle": "1er étage sans ascenseur",
+      "label_en": "1st floor, no lift",
+      "pct": 0
+    }
   ]
 }

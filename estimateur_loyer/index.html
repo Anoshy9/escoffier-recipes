@@ -255,9 +255,9 @@ const DEFAULT_COMPS = [
   ["Southey Road, SW9", "studio", 1350, 1.3, "Zoopla / PrimeLocation"],
 ].map(([adresse, type, loyer, dist, source]) => ({ adresse, type, loyer, dist, source, on: true }));
 
-const DEFAULT_ADJ = [{"label": "Surface 45–50 m² (dans la moyenne d'un 1 chambre)", "pct": 0}, {"label": "Immeuble de 2006, double vitrage, EPC C", "pct": 2}, {"label": "Pas d'espace extérieur", "pct": -2}, {"label": "Fenêtres au nord, sur cour privée calme", "pct": -1.5}, {"label": "Cuisine ouverte en bon état mais datée", "pct": -2}, {"label": "Salle de bain en bon état, sols stratifiés de 2 ans", "pct": 1}, {"label": "Local vélos", "pct": 0.5}, {"label": "1er étage sans ascenseur", "pct": 0}];
+const DEFAULT_ADJ = [{"label": "Surface 45–50 m² (dans la moyenne d'un 1 chambre)", "pct": 0}, {"label": "Immeuble de 2006, double vitrage, EPC C", "pct": 2}, {"label": "Pas d'espace extérieur", "pct": -2}, {"label": "Fenêtres au nord, sur cour privée calme", "pct": -1.5}, {"label": "Cuisine ouverte d'origine (2006), en bon état", "pct": 0}, {"label": "Salle de bain en bon état, meuble et sol vinyle neufs", "pct": 1}, {"label": "Parquet stratifié continu dans tout l'appartement (2 ans)", "pct": 1}, {"label": "Local vélos", "pct": 0.5}, {"label": "1er étage sans ascenseur", "pct": 0}];
 const DEFAULTS = { actuel: 1770, type: "1ch", cpi: 3.1, lambeth: 4.2, decote: 2, marge: 3, adj: DEFAULT_ADJ };
-const STORE = "loyer-barrington-v2";
+const STORE = "loyer-barrington-v3";
 
 let comps = DEFAULT_COMPS.map(c => ({ ...c }));
 let state = { ...DEFAULTS, adj: DEFAULT_ADJ.map(a => ({ ...a })) };

@@ -244,8 +244,8 @@ def afficher_rapport(
     if bien:
         print(f"\n   Le bien : {bien.get('description', '')}")
         for a in bien.get("ajustements", []):
-            print(f"   {a['libelle'][:55]:<56}{a['pct']:+5.1f} %")
-        print(f"   {'Ajustement total':<56}{ajustement_total(bien) * 100:+5.1f} %")
+            print(f"   {a['libelle'][:62]:<63}{a['pct']:+5.1f} %")
+        print(f"   {'Ajustement total':<63}{ajustement_total(bien) * 100:+5.1f} %")
 
     print("\n3. Loyer de marché estimé")
     print(f"   Médiane simple des annonces      : {gbp(marche.mediane_brute)} / mois")

@@ -255,9 +255,9 @@ const DEFAULT_COMPS = [
   ["Southey Road, SW9", "studio", 1350, 1.3, "Zoopla / PrimeLocation"],
 ].map(([adresse, type, loyer, dist, source]) => ({ adresse, type, loyer, dist, source, on: true }));
 
-const DEFAULT_ADJ = [{"label": "45–50 m² floor area (typical for a 1-bed)", "pct": 0}, {"label": "2006 building, double glazing, EPC C", "pct": 2}, {"label": "No outdoor space", "pct": -2}, {"label": "North-facing windows onto a quiet private courtyard", "pct": -1.5}, {"label": "Open-plan kitchen in good condition but dated", "pct": -2}, {"label": "Bathroom in good condition, laminate floors 2 years old", "pct": 1}, {"label": "Bike shed", "pct": 0.5}, {"label": "1st floor, no lift", "pct": 0}];
+const DEFAULT_ADJ = [{"label": "45–50 m² floor area (typical for a 1-bed)", "pct": 0}, {"label": "2006 building, double glazing, EPC C", "pct": 2}, {"label": "No outdoor space", "pct": -2}, {"label": "North-facing windows onto a quiet private courtyard", "pct": -1.5}, {"label": "Original 2006 open-plan kitchen, good condition", "pct": 0}, {"label": "Bathroom in good condition, new cabinet and vinyl floor", "pct": 1}, {"label": "Continuous laminate wood floor throughout (2 years old)", "pct": 1}, {"label": "Bike shed", "pct": 0.5}, {"label": "1st floor, no lift", "pct": 0}];
 const DEFAULTS = { actuel: 1770, type: "1ch", cpi: 3.1, lambeth: 4.2, decote: 2, marge: 3, adj: DEFAULT_ADJ };
-const STORE = "rent-barrington-en-v2";
+const STORE = "rent-barrington-en-v3";
 
 let comps = DEFAULT_COMPS.map(c => ({ ...c }));
 let state = { ...DEFAULTS, adj: DEFAULT_ADJ.map(a => ({ ...a })) };
