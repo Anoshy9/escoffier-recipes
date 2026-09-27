@@ -18,7 +18,9 @@ Options : `--decote` (écart entre loyer affiché et loyer signé, 2 % par défa
 ## Méthode
 
 1. **Marché** : médiane des loyers demandés dans `data/comparables.csv`, pondérée
-   par la proximité (poids = 1 / (0,25 + distance en miles)), moins la décote de négociation.
+   par la proximité (poids = 1 / (0,25 + distance en miles)), moins la décote de négociation,
+   puis ajustée selon les caractéristiques du bien (`data/bien.json` : surface, état,
+   orientation, extérieur…). `--sans-ajustement` ignore ce fichier.
 2. **Inflation** : loyer actuel × (1 + CPI sur 12 mois, ONS).
 3. **Recommandation** : loyer de marché moins la marge de fidélisation. Le résultat
    ne descend jamais sous l'indexation CPI et ne dépasse jamais le loyer de marché.

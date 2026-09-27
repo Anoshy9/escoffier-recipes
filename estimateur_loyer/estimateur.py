@@ -119,17 +119,31 @@ def mediane(valeurs: list[float]) -> float:
     return s[n // 2] if n % 2 else (s[n // 2 - 1] + s[n // 2]) / 2
 
 
+def charger_bien(chemin: Path) -> dict:
+    with chemin.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def ajustement_total(bien: dict) -> float:
+    """Somme des ajustements du bien, en fraction (−2 % -> −0.02)."""
+    return sum(a["pct"] for a in bien.get("ajustements", [])) / 100
+
+
 def estimer_marche(
-    comparables: list[Comparable], type_bien: str, decote_negociation: float
+    comparables: list[Comparable],
+    type_bien: str,
+    decote_negociation: float,
+    ajustement: float = 0.0,
 ) -> EstimationMarche:
     """Loyer de marché = médiane pondérée par la proximité des loyers demandés,
-    corrigée d'une décote (les loyers signés sont un peu sous les prix affichés)."""
+    corrigée d'une décote (les loyers signés sont un peu sous les prix affichés)
+    et des caractéristiques du bien (mieux ou moins bien qu'un bien typique)."""
     retenus = [c for c in comparables if c.type == type_bien]
     if not retenus:
         raise ValueError(f"Aucun comparable de type '{type_bien}' dans les données.")
     loyers = [c.loyer_pcm for c in retenus]
     poids = [c.poids for c in retenus]
-    facteur = 1 - decote_negociation
+    facteur = (1 - decote_negociation) * (1 + ajustement)
     return EstimationMarche(
         loyer_marche=quantile_pondere(loyers, poids, 0.5) * facteur,
         bas=quantile_pondere(loyers, poids, 0.25) * facteur,
@@ -201,6 +215,7 @@ def afficher_rapport(
     reco: Recommandation | None,
     decote: float,
     marge: float,
+    bien: dict | None = None,
 ) -> None:
     cpi = ind["cpi_12_mois"]
     lambeth = ind["loyers_lambeth_12_mois"]
@@ -226,9 +241,18 @@ def afficher_rapport(
           f"  (moyenne tous biens {gbp(lambeth['moyenne_pcm'])})")
     print(f"   Loyers Londres, 12 mois ({londres['periode']}) : {pct(londres['valeur'])}")
 
+    if bien:
+        print(f"\n   Le bien : {bien.get('description', '')}")
+        for a in bien.get("ajustements", []):
+            print(f"   {a['libelle'][:55]:<56}{a['pct']:+5.1f} %")
+        print(f"   {'Ajustement total':<56}{ajustement_total(bien) * 100:+5.1f} %")
+
     print("\n3. Loyer de marché estimé")
     print(f"   Médiane simple des annonces      : {gbp(marche.mediane_brute)} / mois")
-    print(f"   Médiane pondérée − {decote:.0%} négociation : {gbp(marche.loyer_marche)} / mois")
+    libelle = "Loyer de marché pour ce bien" if bien else f"Médiane pondérée − {decote:.0%} négociation"
+    print(f"   {libelle:<33}: {gbp(marche.loyer_marche)} / mois")
+    if bien:
+        print(f"   (médiane pondérée − {decote:.0%} de négociation, {ajustement_total(bien):+.1%} pour le bien)")
     print(f"   Fourchette probable (25e–75e)    : {gbp(marche.bas)} – {gbp(marche.haut)} / mois")
 
     if reco is None:
@@ -276,11 +300,17 @@ def main(argv: list[str] | None = None) -> None:
                    help="remise sous le marché pour garder le locataire (défaut 0.03)")
     p.add_argument("--comparables", type=Path, default=DATA_DIR / "comparables.csv")
     p.add_argument("--indicateurs", type=Path, default=DATA_DIR / "indicateurs.json")
+    p.add_argument("--bien", type=Path, default=DATA_DIR / "bien.json",
+                   help="caractéristiques du bien et ajustements (JSON)")
+    p.add_argument("--sans-ajustement", action="store_true",
+                   help="ignorer les caractéristiques du bien (bien typique)")
     args = p.parse_args(argv)
 
     comparables = charger_comparables(args.comparables)
     ind = charger_indicateurs(args.indicateurs)
-    marche = estimer_marche(comparables, args.type, args.decote)
+    bien = None if args.sans_ajustement or not args.bien.exists() else charger_bien(args.bien)
+    ajust = ajustement_total(bien) if bien else 0.0
+    marche = estimer_marche(comparables, args.type, args.decote, ajust)
     reco = None
     if args.loyer_actuel:
         reco = recommander(
@@ -291,7 +321,7 @@ def main(argv: list[str] | None = None) -> None:
             args.marge_fidelisation,
         )
     afficher_rapport(comparables, args.type, marche, ind, reco,
-                     args.decote, args.marge_fidelisation)
+                     args.decote, args.marge_fidelisation, bien)
 
 
 if __name__ == "__main__":

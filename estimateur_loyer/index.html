@@ -112,6 +112,12 @@ td input[type=text] { font: 14px var(--body); color: var(--ink); padding: 5px 7p
 .btn:hover { border-color: var(--accent); }
 .x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px 6px; }
 .x:hover { color: var(--ink); }
+.adj { display: grid; gap: 6px; }
+.field .adj-row { font-weight: 400; }
+.adj-row { display: grid; grid-template-columns: 1fr 76px; gap: 10px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.adj-row input[type=number] { font-size: 14px; padding: 5px 7px; text-align: right; }
+.adj-total { display: flex; justify-content: space-between; font-weight: 600; font-size: 13px; padding-top: 6px; border-top: 1px solid var(--line-soft); }
+.adj-total output { font-family: var(--mono); }
 .foot { font-size: 12.5px; color: var(--muted); max-width: 80ch; }
 .foot a { color: var(--accent); }
 .section-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
@@ -160,6 +166,13 @@ td input[type=text] { font: 14px var(--body); color: var(--ink); padding: 5px 7p
         <div class="top"><label for="marge">Marge de fidélisation</label><output id="marge-o" for="marge"></output></div>
         <input type="range" id="marge" min="0" max="10" step="0.5" value="3">
         <span class="hint">Remise sous le marché pour garder un bon locataire.</span>
+      </div>
+      <hr>
+      <div class="field">
+        <span class="lbl">Votre bien</span>
+        <span class="hint" data-only="1ch">Écart par rapport à un 1 chambre typique des annonces, en % du loyer. Modifiez les valeurs si besoin.</span>
+        <div class="adj" id="adj"></div>
+        <div class="adj-total"><span>Ajustement total</span><output id="adj-total"></output></div>
       </div>
       <button type="button" class="btn" id="reset">Revenir aux valeurs de départ</button>
     </form>
@@ -216,7 +229,7 @@ td input[type=text] { font: 14px var(--body); color: var(--ink); padding: 5px 7p
   </section>
 
   <p class="foot">
-    Méthode : médiane des loyers affichés pondérée par la proximité (poids = 1 / (0,25 + distance)), moins la décote. Le loyer recommandé vise ce loyer de marché moins la marge de fidélisation. Il ne descend jamais sous le loyer actuel indexé sur le CPI et ne dépasse jamais le loyer de marché, plafond qu'appliquerait le First-tier Tribunal en cas de contestation. En Angleterre, une seule hausse par an est possible, notifiée par formulaire « section 13 » avec deux mois de préavis.
+    Méthode : médiane des loyers affichés pondérée par la proximité (poids = 1 / (0,25 + distance)), moins la décote, puis ajustée selon les caractéristiques du bien. Le loyer recommandé vise ce loyer de marché moins la marge de fidélisation. Il ne descend jamais sous le loyer actuel indexé sur le CPI et ne dépasse jamais le loyer de marché, plafond qu'appliquerait le First-tier Tribunal en cas de contestation. En Angleterre, une seule hausse par an est possible, notifiée par formulaire « section 13 » avec deux mois de préavis.
     Sources : <a href="https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/consumerpriceinflation/august2026">ONS, inflation août 2026</a> ·
     <a href="https://www.ons.gov.uk/visualisations/housingpriceslocal/E09000022/">ONS, loyers à Lambeth</a> ·
     annonces Keating Estates, Zoopla, PrimeLocation, OnTheMarket, Rightmove, FJ Lord. Aide à la décision, pas une expertise.
@@ -242,15 +255,17 @@ const DEFAULT_COMPS = [
   ["Southey Road, SW9", "studio", 1350, 1.3, "Zoopla / PrimeLocation"],
 ].map(([adresse, type, loyer, dist, source]) => ({ adresse, type, loyer, dist, source, on: true }));
 
-const DEFAULTS = { actuel: 1770, type: "1ch", cpi: 3.1, lambeth: 4.2, decote: 2, marge: 3 };
-const STORE = "loyer-barrington-v1";
+const DEFAULT_ADJ = [{"label": "Surface 45–50 m² (dans la moyenne d'un 1 chambre)", "pct": 0}, {"label": "Immeuble de 2006, double vitrage, EPC C", "pct": 2}, {"label": "Pas d'espace extérieur", "pct": -2}, {"label": "Fenêtres au nord, sur cour privée calme", "pct": -1.5}, {"label": "Cuisine ouverte en bon état mais datée", "pct": -2}, {"label": "Salle de bain en bon état, sols stratifiés de 2 ans", "pct": 1}, {"label": "Local vélos", "pct": 0.5}, {"label": "1er étage sans ascenseur", "pct": 0}];
+const DEFAULTS = { actuel: 1770, type: "1ch", cpi: 3.1, lambeth: 4.2, decote: 2, marge: 3, adj: DEFAULT_ADJ };
+const STORE = "loyer-barrington-v2";
 
 let comps = DEFAULT_COMPS.map(c => ({ ...c }));
-let state = { ...DEFAULTS };
+let state = { ...DEFAULTS, adj: DEFAULT_ADJ.map(a => ({ ...a })) };
 
 try {
   const saved = JSON.parse(localStorage.getItem(STORE) || "null");
   if (saved && Array.isArray(saved.comps)) { comps = saved.comps; state = { ...DEFAULTS, ...saved.state }; }
+  if (!Array.isArray(state.adj)) state.adj = DEFAULT_ADJ;
 } catch (e) {}
 
 const $ = id => document.getElementById(id);
@@ -282,7 +297,8 @@ function calcul() {
   const retenus = comps.filter(c => c.on && c.type === state.type && c.loyer > 0 && c.dist >= 0);
   if (!retenus.length) return null;
   const vals = retenus.map(c => c.loyer), ws = retenus.map(c => poids(c.dist));
-  const f = 1 - state.decote / 100;
+  const adjTotal = state.type === "1ch" ? state.adj.reduce((t, a) => t + (a.pct || 0), 0) : 0;
+  const f = (1 - state.decote / 100) * (1 + adjTotal / 100);
   const marche = quantilePondere(vals, ws, 0.5) * f;
   const bas = quantilePondere(vals, ws, 0.25) * f;
   const haut = quantilePondere(vals, ws, 0.75) * f;
@@ -300,7 +316,21 @@ function calcul() {
   return { retenus, marche, bas, haut, inflation, locale, reco: reco === a ? a : arrondir(reco, 5, marche), regle };
 }
 
+function renderAdj() {
+  $("adj").innerHTML = state.adj.map((a, i) => `
+    <label class="adj-row" for="adj-${i}"><span>${esc(a.label)}</span>
+    <input type="number" id="adj-${i}" data-adj="${i}" value="${a.pct}" step="0.5"></label>`).join("");
+}
+$("adj").addEventListener("input", e => {
+  const i = e.target.dataset.adj;
+  if (i === undefined) return;
+  state.adj[+i].pct = parseFloat(e.target.value) || 0;
+  render();
+});
+
 function render() {
+  const t = state.adj.reduce((s, a) => s + (a.pct || 0), 0);
+  $("adj-total").textContent = state.type === "1ch" ? (t >= 0 ? "+" : "−") + Math.abs(t).toFixed(1).replace(".", ",") + " %" : "—";
   $("decote-o").textContent = state.decote.toString().replace(".", ",") + " %";
   $("marge-o").textContent = state.marge.toString().replace(".", ",") + " %";
   for (const b of document.querySelectorAll(".seg button")) b.setAttribute("aria-pressed", b.dataset.type === state.type);
@@ -445,11 +475,13 @@ for (const [id, k] of [["actuel", "actuel"], ["cpi", "cpi"], ["lambeth", "lambet
 for (const b of document.querySelectorAll(".seg button")) b.addEventListener("click", () => { state.type = b.dataset.type; render(); });
 $("form").addEventListener("submit", e => e.preventDefault());
 $("reset").addEventListener("click", () => {
-  comps = DEFAULT_COMPS.map(c => ({ ...c })); state = { ...DEFAULTS };
+  comps = DEFAULT_COMPS.map(c => ({ ...c })); state = { ...DEFAULTS, adj: DEFAULT_ADJ.map(a => ({ ...a })) };
+  renderAdj();
   for (const k of ["actuel", "cpi", "lambeth", "decote", "marge"]) $(k).value = state[k];
   render();
 });
 function save() { try { localStorage.setItem(STORE, JSON.stringify({ comps, state })); } catch (e) {} }
 window.addEventListener("resize", () => { const r = calcul(); if (r && state.actuel > 0) drawChart(r); });
+renderAdj();
 render();
 </script>

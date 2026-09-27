@@ -18,6 +18,10 @@ class TestEstimateur(unittest.TestCase):
         ]
         self.assertGreater(estimer_marche(comps, "1ch", 0).loyer_marche, 1750)
 
+    def test_ajustement_bien(self):
+        comps = [Comparable("a", "1ch", 2000, 0.0, "", "")]
+        self.assertAlmostEqual(estimer_marche(comps, "1ch", 0, -0.02).loyer_marche, 1960)
+
     def test_sous_le_marche_vise_marche_moins_marge(self):
         r = recommander(1650, marche(1850), cpi=0.03, hausse_locale=0.04, marge_fidelisation=0.03)
         self.assertEqual(r.loyer_recommande, 1795)
