@@ -13,6 +13,11 @@
       "pct": 2
     },
     {
+      "libelle": "Très bien isolé, entouré d'autres appartements : chauffage peu coûteux",
+      "label_en": "Very well insulated, surrounded by other flats: low heating bills",
+      "pct": 0.5
+    },
+    {
       "libelle": "Pas d'espace extérieur",
       "label_en": "No outdoor space",
       "pct": -2
@@ -46,6 +51,11 @@
       "libelle": "1er étage sans ascenseur",
       "label_en": "1st floor, no lift",
       "pct": 0
+    },
+    {
+      "libelle": "Eau incluse dans le loyer (les annonces l'excluent)",
+      "label_en": "Water included in the rent (listings exclude it)",
+      "pct": 2
     }
   ]
 }
