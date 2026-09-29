@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analyseur d'humeur</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --text: #1d1d1f; --muted: #6b6b70; --border: #e3e1dc;
+    --accent: #3a6df0; --track: #eceae5;
+    --happy: #f2b01e; --sad: #3f7fd9; --surprised: #b25fe0; --angry: #e0483e;
+    --fearful: #2aa39a; --disgusted: #6c9a2c; --neutral: #9a9aa0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151517; --card: #1f1f22; --text: #f2f2f4; --muted: #a0a0a8; --border: #2e2e33; --track: #2b2b30; }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  .sous-titre { color: var(--muted); margin: 0 0 20px; }
+  .grille { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grille { grid-template-columns: 1fr; } }
+  .carte { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+  .scene { position: relative; aspect-ratio: 4 / 3; background: #000; border-radius: 10px; overflow: hidden; }
+  .scene video, .scene img, .scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .scene.miroir video, .scene.miroir canvas { transform: scaleX(-1); }
+  .scene .vide { position: absolute; inset: 0; display: grid; place-items: center; color: #bbb; text-align: center; padding: 16px; }
+  .boutons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button, label.bouton { font: inherit; border: 1px solid var(--border); background: var(--card); color: var(--text);
+    padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+  button.principal { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  label.bouton input { display: none; }
+  .verdict { text-align: center; padding: 8px 0 16px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  .verdict .emoji { font-size: 4.5rem; line-height: 1; }
+  .verdict .nom { font-size: 1.5rem; font-weight: 650; margin-top: 6px; }
+  .verdict .detail { color: var(--muted); font-size: .9rem; }
+  .ligne { display: grid; grid-template-columns: 1.6rem 6.5rem 1fr 3.6rem; align-items: center; gap: 8px; margin: 7px 0; font-size: .95rem; }
+  .barre { height: 10px; background: var(--track); border-radius: 999px; overflow: hidden; }
+  .barre > div { height: 100%; width: 0; border-radius: 999px; transition: width .25s ease; }
+  .pct { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); }
+  h2 { font-size: 1rem; margin: 20px 0 8px; }
+  #historique { display: flex; gap: 2px; height: 28px; align-items: stretch; }
+  #historique span { flex: 1; border-radius: 2px; min-width: 2px; }
+  .legende-hist { color: var(--muted); font-size: .8rem; display: flex; justify-content: space-between; }
+  .etat { color: var(--muted); font-size: .9rem; margin-top: 10px; min-height: 1.4em; }
+  .note { color: var(--muted); font-size: .85rem; margin-top: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Analyseur d'humeur</h1>
+  <p class="sous-titre">Fais une tête devant la caméra : le logiciel devine si tu es content, triste, surpris…</p>
+
+  <div class="grille">
+    <section class="carte">
+      <div class="scene miroir" id="scene">
+        <video id="video" autoplay muted playsinline></video>
+        <img id="photo" alt="" hidden>
+        <canvas id="calque"></canvas>
+        <div class="vide" id="vide">Clique sur « Démarrer la caméra »<br>ou choisis une photo.</div>
+      </div>
+      <div class="boutons">
+        <button class="principal" id="btnCamera" disabled>Démarrer la caméra</button>
+        <button id="btnStop" hidden>Arrêter</button>
+        <label class="bouton">Analyser une photo<input type="file" id="fichier" accept="image/*"></label>
+      </div>
+      <div class="etat" id="etat">Chargement des modèles…</div>
+    </section>
+
+    <section class="carte">
+      <div class="verdict">
+        <div class="emoji" id="vEmoji">🙂</div>
+        <div class="nom" id="vNom">—</div>
+        <div class="detail" id="vDetail">En attente d'un visage</div>
+      </div>
+      <div id="barres"></div>
+      <h2>Humeur au fil du temps</h2>
+      <div id="historique"></div>
+      <div class="legende-hist"><span>il y a ~30 s</span><span>maintenant</span></div>
+    </section>
+  </div>
+
+  <p class="note">🔒 Tout se passe dans ton navigateur : aucune image n'est envoyée sur Internet.
+    L'analyse repose sur un petit réseau de neurones (face-api.js) et reste une estimation — une
+    expression du visage ne reflète pas toujours ce qu'on ressent vraiment.</p>
+</main>
+
+<script src="lib/face-api.js"></script>
+<script>
+const HUMEURS = [
+  { cle: 'happy',     nom: 'Content',   emoji: '😄' },
+  { cle: 'sad',       nom: 'Triste',    emoji: '😢' },
+  { cle: 'surprised', nom: 'Surpris',   emoji: '😮' },
+  { cle: 'angry',     nom: 'En colère', emoji: '😠' },
+  { cle: 'fearful',   nom: 'Apeuré',    emoji: '😨' },
+  { cle: 'disgusted', nom: 'Dégoûté',   emoji: '🤢' },
+  { cle: 'neutral',   nom: 'Neutre',    emoji: '😐' },
+];
+const PAR_CLE = Object.fromEntries(HUMEURS.map(h => [h.cle, h]));
+const couleur = cle => getComputedStyle(document.documentElement).getPropertyValue('--' + cle).trim();
+
+// Modèles servis localement ; repli sur le CDN si la page est ouverte sans serveur.
+const SOURCES_MODELES = ['modeles', 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model'];
+const LISSAGE = 6;          // nombre d'images moyennées pour éviter que ça clignote
+const TAILLE_HISTORIQUE = 60;
+const INTERVALLE_HISTORIQUE = 500; // ms
+
+const $ = id => document.getElementById(id);
+const video = $('video'), photo = $('photo'), calque = $('calque'), scene = $('scene');
+const optionsDetection = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+
+let flux = null, boucle = null, fenetre = [], historique = [], dernierAjoutHistorique = 0;
+
+// --- Construction de l'interface ---
+$('barres').innerHTML = HUMEURS.map(h => `
+  <div class="ligne">
+    <span>${h.emoji}</span><span>${h.nom}</span>
+    <div class="barre"><div id="b-${h.cle}" style="background:var(--${h.cle})"></div></div>
+    <span class="pct" id="p-${h.cle}">0 %</span>
+  </div>`).join('');
+
+function etat(texte) { $('etat').textContent = texte; }
+
+// WebGL (carte graphique) si possible, sinon calcul sur le processeur (plus lent).
+async function choisirMoteur() {
+  for (const moteur of ['webgl', 'cpu']) {
+    try { if (await faceapi.tf.setBackend(moteur)) { await faceapi.tf.ready(); return; } } catch (e) { /* moteur suivant */ }
+  }
+}
+
+async function chargerModeles() {
+  await choisirMoteur();
+  for (const source of SOURCES_MODELES) {
+    try {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(source);
+      await faceapi.nets.faceExpressionNet.loadFromUri(source);
+      return;
+    } catch (e) { console.warn('Modèles indisponibles depuis', source, e); }
+  }
+  throw new Error('Impossible de charger les modèles.');
+}
+
+// --- Affichage des résultats ---
+function afficher(expressions) {
+  if (!expressions) {
+    $('vEmoji').textContent = '🫥';
+    $('vNom').textContent = 'Aucun visage';
+    $('vDetail').textContent = 'Place ton visage face à la caméra, bien éclairé';
+    HUMEURS.forEach(h => { $('b-' + h.cle).style.width = '0'; $('p-' + h.cle).textContent = '—'; });
+    return;
+  }
+  const tri = HUMEURS.map(h => ({ ...h, p: expressions[h.cle] || 0 })).sort((a, b) => b.p - a.p);
+  const [premier, second] = tri;
+  $('vEmoji').textContent = premier.emoji;
+  $('vNom').textContent = premier.nom;
+  $('vDetail').textContent = premier.p < 0.5 && second.p > 0.2
+    ? `Plutôt ${premier.nom.toLowerCase()}, un peu ${second.nom.toLowerCase()}`
+    : `Confiance : ${Math.round(premier.p * 100)} %`;
+  HUMEURS.forEach(h => {
+    const p = expressions[h.cle] || 0;
+    $('b-' + h.cle).style.width = (p * 100).toFixed(1) + '%';
+    $('p-' + h.cle).textContent = Math.round(p * 100) + ' %';
+  });
+}
+
+function dessinerCadres(resultats, largeur, hauteur) {
+  calque.width = largeur; calque.height = hauteur;
+  const ctx = calque.getContext('2d');
+  ctx.clearRect(0, 0, largeur, hauteur);
+  const miroir = scene.classList.contains('miroir');
+  for (const r of resultats) {
+    const { x, y, width, height } = r.detection.box;
+    const cle = dominante(r.expressions);
+    ctx.strokeStyle = couleur(cle);
+    ctx.lineWidth = Math.max(2, largeur / 200);
+    ctx.strokeRect(x, y, width, height);
+    // L'étiquette est redressée si la vidéo est affichée en miroir.
+    const texte = `${PAR_CLE[cle].emoji} ${PAR_CLE[cle].nom}`;
+    ctx.font = `${Math.max(14, largeur / 35)}px system-ui, sans-serif`;
+    const lt = ctx.measureText(texte).width + 12, ht = Math.max(22, largeur / 25);
+    ctx.save();
+    if (miroir) { ctx.translate(largeur, 0); ctx.scale(-1, 1); }
+    const xe = miroir ? largeur - x - width : x;
+    ctx.fillStyle = couleur(cle);
+    ctx.fillRect(xe, Math.max(0, y - ht), lt, ht);
+    ctx.fillStyle = '#fff';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(texte, xe + 6, Math.max(0, y - ht) + ht / 2);
+    ctx.restore();
+  }
+}
+
+function dominante(expressions) {
+  return HUMEURS.reduce((a, h) => (expressions[h.cle] > expressions[a.cle] ? h : a), HUMEURS[0]).cle;
+}
+
+function moyenne(liste) {
+  const somme = {};
+  HUMEURS.forEach(h => { somme[h.cle] = liste.reduce((s, e) => s + (e[h.cle] || 0), 0) / liste.length; });
+  return somme;
+}
+
+function ajouterHistorique(cle) {
+  const maintenant = performance.now();
+  if (maintenant - dernierAjoutHistorique < INTERVALLE_HISTORIQUE) return;
+  dernierAjoutHistorique = maintenant;
+  historique.push(cle);
+  if (historique.length > TAILLE_HISTORIQUE) historique.shift();
+  $('historique').innerHTML = historique.map(c =>
+    `<span style="background:${c ? `var(--${c})` : 'var(--track)'}" title="${c ? PAR_CLE[c].nom : 'Aucun visage'}"></span>`).join('');
+}
+
+// --- Caméra ---
+async function demarrerCamera() {
+  try {
+    flux = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+  } catch (e) {
+    etat("Accès à la caméra refusé ou impossible (" + e.name + ").");
+    return;
+  }
+  photo.hidden = true; video.hidden = false; $('vide').hidden = true;
+  scene.classList.add('miroir');
+  video.srcObject = flux;
+  await video.play();
+  fenetre = [];
+  $('btnCamera').hidden = true; $('btnStop').hidden = false;
+  etat('Analyse en direct…');
+  analyserVideo();
+}
+
+function arreterCamera() {
+  cancelAnimationFrame(boucle); boucle = null;
+  if (flux) flux.getTracks().forEach(t => t.stop());
+  flux = null; video.srcObject = null;
+  $('btnCamera').hidden = false; $('btnStop').hidden = true;
+  calque.getContext('2d').clearRect(0, 0, calque.width, calque.height);
+  etat('Caméra arrêtée.');
+}
+
+async function analyserVideo() {
+  if (!flux) return;
+  if (video.readyState >= 2) {
+    const resultats = await faceapi.detectAllFaces(video, optionsDetection).withFaceExpressions();
+    if (!flux) return;
+    dessinerCadres(resultats, video.videoWidth, video.videoHeight);
+    // On suit le plus grand visage (généralement la personne devant l'écran).
+    const principal = resultats.sort((a, b) => b.detection.box.area - a.detection.box.area)[0];
+    if (principal) {
+      fenetre.push(principal.expressions);
+      if (fenetre.length > LISSAGE) fenetre.shift();
+      const lisse = moyenne(fenetre);
+      afficher(lisse);
+      ajouterHistorique(dominante(lisse));
+    } else {
+      fenetre = [];
+      afficher(null);
+      ajouterHistorique(null);
+    }
+  }
+  boucle = requestAnimationFrame(analyserVideo);
+}
+
+// --- Photo ---
+async function analyserPhoto(fichier) {
+  if (flux) arreterCamera();
+  scene.classList.remove('miroir');
+  video.hidden = true; $('vide').hidden = true;
+  photo.src = URL.createObjectURL(fichier);
+  await photo.decode();
+  photo.hidden = false;
+  etat('Analyse de la photo…');
+  const resultats = await faceapi.detectAllFaces(photo, new faceapi.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.4 }))
+    .withFaceExpressions();
+  dessinerCadres(resultats, photo.naturalWidth, photo.naturalHeight);
+  const principal = resultats.sort((a, b) => b.detection.box.area - a.detection.box.area)[0];
+  afficher(principal ? principal.expressions : null);
+  etat(resultats.length === 0 ? 'Aucun visage trouvé sur la photo.'
+    : resultats.length === 1 ? '1 visage analysé.'
+    : `${resultats.length} visages trouvés — le détail concerne le plus grand.`);
+}
+
+$('btnCamera').addEventListener('click', demarrerCamera);
+$('btnStop').addEventListener('click', arreterCamera);
+$('fichier').addEventListener('change', e => { if (e.target.files[0]) analyserPhoto(e.target.files[0]); e.target.value = ''; });
+
+chargerModeles()
+  .then(() => { $('btnCamera').disabled = false; etat('Prêt. Démarre la caméra ou choisis une photo.'); window.pret = true; })
+  .catch(e => etat(e.message + ' Lance la page via un petit serveur local (voir README).'));
+</script>
+</body>
+</html>
