@@ -66,6 +66,7 @@
       <div class="boutons">
         <button class="principal" id="btnCamera" disabled>Démarrer la caméra</button>
         <button id="btnStop" hidden>Arrêter</button>
+        <label class="bouton">Prendre un selfie<input type="file" id="selfie" accept="image/*" capture="user"></label>
         <label class="bouton">Analyser une photo<input type="file" id="fichier" accept="image/*"></label>
       </div>
       <div class="etat" id="etat">Chargement des modèles…</div>
@@ -285,7 +286,9 @@ async function analyserPhoto(fichier) {
 
 $('btnCamera').addEventListener('click', demarrerCamera);
 $('btnStop').addEventListener('click', arreterCamera);
-$('fichier').addEventListener('change', e => { if (e.target.files[0]) analyserPhoto(e.target.files[0]); e.target.value = ''; });
+for (const id of ['fichier', 'selfie']) {
+  $(id).addEventListener('change', e => { if (e.target.files[0]) analyserPhoto(e.target.files[0]); e.target.value = ''; });
+}
 
 chargerModeles()
   .then(() => { $('btnCamera').disabled = false; etat('Prêt. Démarre la caméra ou choisis une photo.'); window.pret = true; })

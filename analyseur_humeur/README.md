@@ -18,7 +18,15 @@ python3 -m http.server 8000
 
 Puis ouvrir <http://localhost:8000> dans Chrome, Firefox, Edge ou Safari,
 cliquer sur **Démarrer la caméra** et autoriser l'accès à la webcam.
-On peut aussi cliquer sur **Analyser une photo** pour choisir une image.
+On peut aussi cliquer sur **Prendre un selfie** (sur téléphone, cela ouvre
+l'appareil photo) ou sur **Analyser une photo** pour choisir une image.
+
+## Sur téléphone
+
+Le navigateur n'autorise la webcam que sur une page en HTTPS (ou sur
+`localhost`). Pour l'utiliser sur un téléphone, il faut donc héberger ce dossier
+sur un site en HTTPS (par exemple GitHub Pages). Sinon, le bouton
+**Prendre un selfie** fonctionne partout : il prend une photo et l'analyse.
 
 ## Ce que l'on voit
 
