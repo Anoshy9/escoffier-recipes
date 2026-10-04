@@ -282,9 +282,15 @@ function stopListening() {
   $("mic").classList.remove("on");
 }
 
+// Dans une page intégrée (aperçu), le navigateur bloque le micro sans demander l'autorisation.
+const EMBEDDED = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+const MIC_DENIED = EMBEDDED
+  ? "Le micro est bloqué dans cet aperçu. Ouvrez l'application installée sur votre téléphone pour parler."
+  : "Micro refusé. Autorisez le micro pour ce site dans les réglages de Chrome.";
+
 const ERRORS = {
-  "not-allowed": "Micro refusé. Autorisez le micro pour ce site dans les réglages de Chrome.",
-  "service-not-allowed": "Micro refusé. Autorisez le micro pour ce site dans les réglages de Chrome.",
+  "not-allowed": MIC_DENIED,
+  "service-not-allowed": MIC_DENIED,
   "no-speech": "Je n'ai rien entendu. Touchez le micro puis parlez tout de suite.",
   "audio-capture": "Aucun micro trouvé, ou il est utilisé par une autre application.",
   "network": "La reconnaissance vocale a besoin d'internet. Vérifiez votre connexion."
@@ -377,7 +383,7 @@ async function toggleRecording() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
-    $("mic-status").textContent = ERRORS["not-allowed"];
+    $("mic-status").textContent = MIC_DENIED;
     return;
   }
   const chunks = [];
