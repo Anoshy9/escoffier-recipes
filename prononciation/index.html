@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Say It British</title>
+<meta name="description" content="Analyse et correction de la prononciation anglaise britannique pour francophones.">
+<meta name="theme-color" content="#1b2a4a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=Charis+SIL:wght@400;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <button id="back" class="icon-btn" aria-label="Retour" hidden>&larr;</button>
+  <h1 id="bar-title">Say It British</h1>
+  <span id="streak" class="chip" title="Essais aujourd'hui"></span>
+</header>
+
+<main id="app">
+  <div id="unsupported" class="notice" hidden>
+    <strong>La reconnaissance vocale n'est pas disponible dans ce navigateur.</strong>
+    Ouvrez cette page dans <b>Google Chrome</b> sur Android, avec une connexion internet.
+    Vous pouvez quand même écouter les modèles et vous enregistrer.
+  </div>
+
+  <!-- Accueil -->
+  <section id="view-home" class="view">
+    <div class="intro">
+      <p class="lead">Choisissez un son, écoutez le modèle britannique, puis parlez. L'application vous dit ce qu'un Anglais a compris et quel son corriger.</p>
+    </div>
+
+    <div id="review-card" class="review" hidden>
+      <div>
+        <div class="label">À revoir</div>
+        <div id="review-count" class="review-count"></div>
+      </div>
+      <button id="review-go" class="btn">Réviser</button>
+    </div>
+
+    <h2 class="section-h">Les sons difficiles pour un francophone</h2>
+    <ul id="lesson-list" class="lesson-list"></ul>
+
+    <h2 class="section-h">Ma propre phrase</h2>
+    <form id="free-form" class="free">
+      <label for="free-text" class="label">Tapez une phrase en anglais à travailler</label>
+      <textarea id="free-text" rows="2" placeholder="I'd like a return ticket to Manchester, please."></textarea>
+      <button class="btn" type="submit">Pratiquer cette phrase</button>
+    </form>
+    <ul id="custom-list" class="custom-list"></ul>
+  </section>
+
+  <!-- Leçon / exercice -->
+  <section id="view-practice" class="view" hidden>
+    <details id="tip-box" class="tip">
+      <summary><span id="tip-title"></span><span class="tip-hint">Comment le prononcer</span></summary>
+      <p id="tip-text"></p>
+    </details>
+
+    <div class="stage">
+      <div class="counter"><span id="item-pos"></span><span id="item-best"></span></div>
+      <p id="target" class="target"></p>
+      <p id="ipa" class="ipa"></p>
+
+      <div class="listen-row">
+        <button id="play" class="btn ghost">&#9654; Écouter</button>
+        <button id="play-slow" class="btn ghost">Ralenti</button>
+      </div>
+
+      <button id="mic" class="mic" aria-label="Parler">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12z"/></svg>
+      </button>
+      <p id="mic-status" class="mic-status">Touchez le micro et lisez la phrase</p>
+      <p id="interim" class="interim"></p>
+    </div>
+
+    <div id="result" class="result" hidden>
+      <div class="score-row">
+        <div id="score" class="score"></div>
+        <div>
+          <div id="verdict" class="verdict"></div>
+          <div class="heard">Compris : «&nbsp;<span id="heard"></span>&nbsp;»</div>
+        </div>
+      </div>
+      <p id="words" class="words"></p>
+      <div id="feedback" class="feedback"></div>
+      <p id="alts" class="alts"></p>
+    </div>
+
+    <div class="record">
+      <div class="label">Comparer ma voix au modèle</div>
+      <div class="listen-row">
+        <button id="rec" class="btn ghost">&#9679; M'enregistrer</button>
+        <button id="rec-play" class="btn ghost" disabled>&#9654; Ma voix</button>
+      </div>
+    </div>
+
+    <nav class="pager">
+      <button id="prev" class="btn ghost">&larr; Précédent</button>
+      <button id="next" class="btn">Suivant &rarr;</button>
+    </nav>
+  </section>
+</main>
+
+<script src="data.js"></script>
+<script src="analyse.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
