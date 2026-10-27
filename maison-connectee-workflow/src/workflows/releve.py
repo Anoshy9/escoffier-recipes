@@ -13,23 +13,22 @@ Comportement :
 - en cas d'échec complet après essais : ligne `<horodatage>;ERREUR;<motif>`
   (jamais de trou silencieux) ;
 - l'activité est idempotente (retry SDK sans doublon de ligne).
+
+⚠️ Sandbox : ce module définit la classe de workflow, il est chargé DANS le
+sandbox déterministe. Les imports non déterministes (httpx, os, modules
+d'I/O) doivent rester à l'intérieur des corps de fonction d'activité, jamais
+en tête de module.
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import httpx
 import mistralai.workflows as workflows
 from pydantic import BaseModel
 
-from workflows import smartthings, state_store
-
-LIBRARY_NAME = os.environ.get("MAISON_LIBRARY_NAME", "maison-connectee")
 CSV_DOC = "releves-energie.csv"
 TOKENS_DOC = "smartthings-tokens.json"
 CREDENTIALS_DOC = "smartthings-credentials.json"
@@ -51,6 +50,10 @@ class ReleveResult(BaseModel):
     kwh_cumules: str | None = None
     watts: str | None = None
     erreur: str | None = None
+
+
+def _utcnow_str() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _motif(exc: Exception) -> str:
@@ -85,34 +88,36 @@ def _est_doublon_recent(lignes: list[str], kwh: str, watts: str, maintenant: dat
 
 
 async def _lecture(
-    http: httpx.AsyncClient,
+    http: Any,
     creds: dict[str, str],
     tokens: dict[str, str],
     lib_id: str,
-    device_id: str | None = None,
+    device_id: str,
+    st: Any,
+    store: Any,
 ) -> tuple[str, str, dict[str, str]]:
     """Lit le compteur, avec refresh sur 401 et persistance immédiate des jetons.
 
+    ``st``/``store`` sont les modules smartthings/state_store, passés par
+    l'appelant pour éviter tout import en tête de module (sandbox).
+
     Retourne (kwh, watts, jetons_utilisés) ou lève la dernière erreur.
     """
-    device_id = device_id or os.environ.get("MAISON_ENERGY_DEVICE_ID")
-    if not device_id:
-        raise RuntimeError("deviceId absent (credentials ou MAISON_ENERGY_DEVICE_ID)")
     derniere_erreur: Exception | None = None
     for essai in range(NB_ESSAIS_LECTURE):
         try:
-            kwh, watts = await smartthings.lire_etat_compteur(
+            kwh, watts = await st.lire_etat_compteur(
                 http, tokens["access_token"], device_id
             )
             return kwh, watts, tokens
-        except smartthings.UnauthorisedError:
+        except st.UnauthorisedError:
             # access token expiré : refresh + persistance IMMÉDIATE
-            tokens = await smartthings.rafraichir_jetons(
+            tokens = await st.rafraichir_jetons(
                 http, creds["oauthClientId"], creds["oauthClientSecret"],
                 tokens["refresh_token"],
             )
-            tokens["obtained_at"] = state_store.maintenant_utc()
-            await state_store.ecrire_document(
+            tokens["obtained_at"] = _utcnow_str()
+            await store.ecrire_document(
                 http, lib_id, TOKENS_DOC, json.dumps(tokens, indent=2).encode()
             )
             print("Jetons SmartThings rafraîchis et persistés.")
@@ -132,33 +137,48 @@ async def faire_le_releve() -> dict[str, Any]:
     Idempotente en cas de retry SDK : re-lit l'état depuis la library et ne
     réécrit pas une ligne déjà présente (garde anti-doublon).
     """
-    horodatage = state_store.maintenant_utc()
+    # Imports non déterministes : uniquement dans le corps de l'activité,
+    # jamais en tête de module (sandbox déterministe des workflows).
+    import json
+    import os
+
+    import httpx
+
+    from workflows import smartthings, state_store
+
+    horodatage = _utcnow_str()
     maintenant = datetime.now(timezone.utc)
-    lib_id: str | None = None
+    library_name = os.environ.get("MAISON_LIBRARY_NAME", "maison-connectee")
 
     async with httpx.AsyncClient(base_url=state_store.MISTRAL_API, timeout=60.0) as http:
-        lib_id = await state_store.trouver_ou_creer_library(http, LIBRARY_NAME)
+        lib_id = await state_store.trouver_ou_creer_library(http, library_name)
 
         creds_brut = await state_store.lire_texte(http, lib_id, CREDENTIALS_DOC)
         if not creds_brut:
             raise RuntimeError(
-                f"Document {CREDENTIALS_DOC} introuvable dans la library {LIBRARY_NAME}"
+                f"Document {CREDENTIALS_DOC} introuvable dans la library {library_name}"
             )
         creds = json.loads(creds_brut)
 
         device_id = creds.get("deviceId") or creds.get("energyMeterDeviceId")
+        if not device_id:
+            device_id = os.environ.get("MAISON_ENERGY_DEVICE_ID")
+        if not device_id:
+            raise RuntimeError("deviceId absent (credentials ou MAISON_ENERGY_DEVICE_ID)")
 
         tokens_brut = await state_store.lire_texte(http, lib_id, TOKENS_DOC)
         if not tokens_brut:
             raise RuntimeError(
-                f"Document {TOKENS_DOC} introuvable dans la library {LIBRARY_NAME}"
+                f"Document {TOKENS_DOC} introuvable dans la library {library_name}"
             )
         tokens = json.loads(tokens_brut)
 
         csv_texte = await state_store.lire_texte(http, lib_id, CSV_DOC, defaut="")
 
         try:
-            kwh, watts, _ = await _lecture(http, creds, tokens, lib_id, device_id)
+            kwh, watts, _ = await _lecture(
+                http, creds, tokens, lib_id, device_id, smartthings, state_store
+            )
             ligne = f"{horodatage};{kwh};{watts}"
             lignes = _sanitiser_csv(csv_texte)
             if not _est_doublon_recent(lignes, kwh, watts, maintenant):
