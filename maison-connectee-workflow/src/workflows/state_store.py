@@ -39,6 +39,12 @@ def _headers() -> dict[str, str]:
 async def trouver_ou_creer_library(http: httpx.AsyncClient, nom: str) -> str:
     """Retourne l'id de la library nommée ``nom``, la crée (partagage workspace) sinon."""
     resp = await http.get("/v1/libraries", headers=_headers(), params={"search": nom})
+    if resp.status_code != 200:
+        print(
+            f"DEBUG libraries: HTTP {resp.status_code} | "
+            f"WWW-Authenticate={resp.headers.get('www-authenticate')} | "
+            f"body={resp.text[:300]}"
+        )
     resp.raise_for_status()
     for lib in resp.json().get("data", []):
         if lib.get("name") == nom:
