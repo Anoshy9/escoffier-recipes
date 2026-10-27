@@ -9,8 +9,11 @@ CSV des relevés) vit dans une library Mistral, via l'API REST :
 - DELETE /v1/libraries/{id}/documents/{doc_id}
 - GET    /v1/libraries/{id}/documents/{doc_id}/signed-url   -> URL du contenu brut
 
-Authentification : token de service-account du déploiement, lu depuis
-MISTRAL_SA_TOKEN_PATH (rechargé à chaque appel pour suivre les rotations).
+Authentification : l'API Libraries exige une identité Mistral (« User id is
+required ») que le token Kubernetes du service account ne porte pas. On
+utilise donc la clé API liée au déploiement depuis le Secrets Manager du
+workspace (variable d'environnement MAISON_API_KEY), avec repli sur le token
+du service account (MISTRAL_SA_TOKEN_PATH).
 """
 
 from __future__ import annotations
@@ -24,27 +27,29 @@ import httpx
 MISTRAL_API = "https://api.mistral.ai"
 
 
-def _jeton_sa() -> str:
+def _credential() -> str:
+    """Clé API depuis le secret lié au déploiement, sinon token du service account."""
+    cle = os.environ.get("MAISON_API_KEY")
+    if cle:
+        return cle.strip()
     path = os.environ.get("MISTRAL_SA_TOKEN_PATH")
     if not path:
-        raise RuntimeError("MISTRAL_SA_TOKEN_PATH absent")
+        raise RuntimeError("MAISON_API_KEY absent et MISTRAL_SA_TOKEN_PATH absent")
     with open(path, "r", encoding="utf-8") as f:
         return f.read().strip()
 
 
 def _headers() -> dict[str, str]:
-    return {"Authorization": f"Bearer {_jeton_sa()}"}
+    return {"Authorization": f"Bearer {_credential()}"}
 
 
 async def trouver_ou_creer_library(http: httpx.AsyncClient, nom: str) -> str:
     """Retourne l'id de la library nommée ``nom``, la crée (partagage workspace) sinon."""
     resp = await http.get("/v1/libraries", headers=_headers(), params={"search": nom})
-    if resp.status_code != 200:
-        print(
-            f"DEBUG libraries: HTTP {resp.status_code} | "
-            f"WWW-Authenticate={resp.headers.get('www-authenticate')} | "
-            f"body={resp.text[:300]}"
-        )
+    if resp.status_code == 401:
+        print(f"401 sur /v1/libraries (credential utilise: "
+              f"{'MAISON_API_KEY' if os.environ.get('MAISON_API_KEY') else 'SA token'}): "
+              f"{resp.text[:200]}")
     resp.raise_for_status()
     for lib in resp.json().get("data", []):
         if lib.get("name") == nom:

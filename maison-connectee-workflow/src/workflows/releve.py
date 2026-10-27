@@ -139,31 +139,12 @@ async def faire_le_releve() -> dict[str, Any]:
     """
     # Imports non déterministes : uniquement dans le corps de l'activité,
     # jamais en tête de module (sandbox déterministe des workflows).
-    import base64
     import json
     import os
 
     import httpx
 
     from workflows import smartthings, state_store
-
-    # --- DIAGNOSTIC : décodage du JWT du service account (claims non sensibles) ---
-    try:
-        chemin = os.environ.get("MISTRAL_SA_TOKEN_PATH", "")
-        with open(chemin, "r", encoding="utf-8") as f:
-            tok = f.read().strip()
-        parties = tok.split(".")
-        if len(parties) == 3:
-            pad = parties[1] + "=" * (-len(parties[1]) % 4)
-            claims = json.loads(base64.urlsafe_b64decode(pad))
-            cles = {k: claims.get(k) for k in
-                    ("iss", "aud", "sub", "exp", "scope", "roles", "permissions",
-                     "workspace_id", "org_id")}
-            print("DEBUG JWT claims:", json.dumps(cles))
-        else:
-            print(f"DEBUG token non-JWT: len={len(tok)} prefix={tok[:10]!r}")
-    except Exception as exc:
-        print("DEBUG echec lecture/decodage token:", repr(exc))
 
     horodatage = _utcnow_str()
     maintenant = datetime.now(timezone.utc)
