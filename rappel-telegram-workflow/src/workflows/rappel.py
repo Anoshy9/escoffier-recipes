@@ -5,8 +5,8 @@ Envoie un message sur Telegram via l'API Bot officielle
 par des schedules one-shot créés à la demande depuis Vibe.
 
 Configuration (secrets du déploiement, jamais dans le code) :
-- TELEGRAM_BOT_TOKEN : token du bot (@BotFather) ;
-- TELEGRAM_CHAT_ID   : chat ID par défaut de l'utilisateur.
+- token du bot (@BotFather) : env TELEGRAM_BOT_TOKEN (ou telegram_bot_token) ;
+- chat ID par défaut : env TELEGRAM_CHAT_ID (ou telegram_chat_id).
 
 ⚠️ Sandbox : ce module est chargé DANS le sandbox déterministe. Les imports
 non déterministes (httpx, os) restent à l'intérieur des corps d'activité,
@@ -42,10 +42,17 @@ async def envoyer_message_telegram(message: str, chat_id: str | None) -> dict[st
 
     import httpx
 
-    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    token = (
+        os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("telegram_bot_token") or ""
+    ).strip()
     if not token:
         raise RuntimeError("Secret TELEGRAM_BOT_TOKEN absent du déploiement")
-    chat = (chat_id or os.environ.get("TELEGRAM_CHAT_ID", "")).strip()
+    chat = (
+        chat_id
+        or os.environ.get("TELEGRAM_CHAT_ID")
+        or os.environ.get("telegram_chat_id")
+        or ""
+    ).strip()
     if not chat:
         raise RuntimeError("chat_id absent (input ou secret TELEGRAM_CHAT_ID)")
 
