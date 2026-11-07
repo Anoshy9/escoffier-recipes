@@ -13,12 +13,15 @@ depuis Vibe quand l'utilisateur demande un rappel (« rappelle-moi demain
 - **Déploiement géré** : Mistral Cloud construit l'image depuis ce dépôt
   (déploiement `rappels-telegram`) et exécute le worker ; aucun secret dans
   le code ni dans l'image.
-- **Identifiants** : deux secrets du workspace, liés au déploiement :
-  - `telegram_bot_token` → env `TELEGRAM_BOT_TOKEN` (token du bot créé via
-    @BotFather — jamais dans le code, jamais dans le chat) ;
-  - `telegram_chat_id` → env `TELEGRAM_CHAT_ID` (chat ID de l'utilisateur,
-    obtenu avec la commande `/id` du bot). Peut aussi être passé explicitement
-    dans l'input du workflow (`chat_id`).
+- **Identifiants** : deux secrets du workspace, liés au déploiement (onglet
+  Settings de la console) :
+  - secret `telegram_bot_token` (token du bot créé via @BotFather — jamais
+    dans le code, jamais dans le chat), lu via l'env `TELEGRAM_BOT_TOKEN`
+    (ou `telegram_bot_token`) ;
+  - secret `telegram_chat_id` (chat ID de l'utilisateur, obtenu avec la
+    commande `/id` du bot), lu via l'env `TELEGRAM_CHAT_ID` (ou
+    `telegram_chat_id`). Peut aussi être passé explicitement dans l'input
+    du workflow (`chat_id`).
 
 ## Entrée / sortie
 
