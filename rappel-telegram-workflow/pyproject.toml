@@ -1,0 +1,9 @@
+[project]
+name = "rappel-telegram-workflow"
+version = "1.0.0"
+description = "Rappels Telegram (Mistral Workflow) : envoie un message via l'API Bot Telegram, déclenché par des schedules one-shot."
+requires-python = ">=3.12"
+dependencies = [
+    "mistralai-workflows>=3.10,<4",
+    "httpx>=0.27",
+]
