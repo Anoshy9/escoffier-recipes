@@ -9,7 +9,7 @@ Configuration (secrets du déploiement, jamais dans le code) :
 - chat ID par défaut : env TELEGRAM_CHAT_ID (ou telegram_chat_id).
 
 ⚠️ Sandbox : ce module est chargé DANS le sandbox déterministe. Les imports
-non déterministes (httpx, os) restent à l'intérieur des corps d'activité,
+non déterministes (httpx, os, re) restent à l'intérieur des corps d'activité,
 jamais en tête de module.
 """
 
@@ -39,6 +39,7 @@ class RappelResult(BaseModel):
 async def envoyer_message_telegram(message: str, chat_id: str | None) -> dict[str, Any]:
     """Activité : POST sendMessage sur l'API Bot Telegram."""
     import os
+    import re
 
     import httpx
 
@@ -47,6 +48,12 @@ async def envoyer_message_telegram(message: str, chat_id: str | None) -> dict[st
     ).strip()
     if not token:
         raise RuntimeError("Secret TELEGRAM_BOT_TOKEN absent du déploiement")
+    if not re.fullmatch(r"\d{5,12}:[A-Za-z0-9_-]{20,}", token):
+        # Ne divulgue que la longueur, jamais le contenu du secret.
+        raise RuntimeError(
+            f"TELEGRAM_BOT_TOKEN mal formé (longueur={len(token)}, "
+            "format attendu '<id numérique>:<secret>')"
+        )
     chat = (
         chat_id
         or os.environ.get("TELEGRAM_CHAT_ID")
@@ -59,6 +66,12 @@ async def envoyer_message_telegram(message: str, chat_id: str | None) -> dict[st
     url = f"{TELEGRAM_API}/bot{token}/sendMessage"
     async with httpx.AsyncClient(timeout=30.0) as http:
         reponse = await http.post(url, json={"chat_id": chat, "text": message})
+    if reponse.status_code == 401:
+        raise RuntimeError(
+            "Telegram 401 Unauthorized : token invalide ou révoqué — régénérer via "
+            "@BotFather (/mybots → /revoke), mettre à jour le secret Studio, "
+            "puis redémarrer le déploiement"
+        )
     if reponse.status_code != 200:
         raise RuntimeError(f"Telegram HTTP {reponse.status_code}: {reponse.text[:200]}")
     corps = reponse.json()
