@@ -37,7 +37,7 @@ class RappelResult(BaseModel):
 
 @workflows.activity(retry_policy_max_attempts=3, retry_policy_backoff_coefficient=2.0)
 async def envoyer_message_telegram(message: str, chat_id: str | None) -> dict[str, Any]:
-    """Activité : POST sendMessage sur l'API Bot Telegram."""
+    """Activité : diagnostic getMe puis POST sendMessage sur l'API Bot Telegram."""
     import os
     import re
 
@@ -63,9 +63,18 @@ async def envoyer_message_telegram(message: str, chat_id: str | None) -> dict[st
     if not chat:
         raise RuntimeError("chat_id absent (input ou secret TELEGRAM_CHAT_ID)")
 
-    url = f"{TELEGRAM_API}/bot{token}/sendMessage"
     async with httpx.AsyncClient(timeout=30.0) as http:
-        reponse = await http.post(url, json={"chat_id": chat, "text": message})
+        # Diagnostic : getMe ne révèle que des infos publiques du bot (id, username).
+        me = await http.get(f"{TELEGRAM_API}/bot{token}/getMe")
+        if me.status_code == 200 and me.json().get("ok"):
+            info = me.json()["result"]
+            print(f"getMe OK: bot id={info.get('id')} username={info.get('username')}")
+        else:
+            print(f"getMe échec: HTTP {me.status_code} {me.text[:120]}")
+        reponse = await http.post(
+            f"{TELEGRAM_API}/bot{token}/sendMessage",
+            json={"chat_id": chat, "text": message},
+        )
     if reponse.status_code == 401:
         bot_id, _, secret_part = token.partition(":")
         # Le bot_id n'est pas un credential (seule la partie après ':' l'est).
