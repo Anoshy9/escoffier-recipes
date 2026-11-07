@@ -67,10 +67,12 @@ async def envoyer_message_telegram(message: str, chat_id: str | None) -> dict[st
     async with httpx.AsyncClient(timeout=30.0) as http:
         reponse = await http.post(url, json={"chat_id": chat, "text": message})
     if reponse.status_code == 401:
+        bot_id, _, secret_part = token.partition(":")
+        # Le bot_id n'est pas un credential (seule la partie après ':' l'est).
         raise RuntimeError(
-            "Telegram 401 Unauthorized : token invalide ou révoqué — régénérer via "
-            "@BotFather (/mybots → /revoke), mettre à jour le secret Studio, "
-            "puis redémarrer le déploiement"
+            f"Telegram 401 (bot_id={bot_id}, longueur du secret={len(secret_part)}) : "
+            "token révoqué ou faux — régénérer via @BotFather (/mybots → /revoke), "
+            "mettre à jour le secret Studio, puis redémarrer le déploiement"
         )
     if reponse.status_code != 200:
         raise RuntimeError(f"Telegram HTTP {reponse.status_code}: {reponse.text[:200]}")
